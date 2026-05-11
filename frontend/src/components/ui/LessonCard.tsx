@@ -4,6 +4,7 @@ import { LevelBadge } from './LevelBadge';
 import { Button } from './Button';
 import { Clock, Play } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { useAppPreferences } from '../../context/AppPreferencesContext';
 
 interface LessonCardProps {
   title: string;
@@ -22,6 +23,16 @@ export function LessonCard({
   progress = 0,
   onClick 
 }: LessonCardProps) {
+  const { language } = useAppPreferences();
+  const actionLabel =
+    progress > 0
+      ? language === "ru"
+        ? "Продолжить"
+        : "Жалғастыру"
+      : language === "ru"
+        ? "Начать урок"
+        : "Сабақты бастау";
+
   return (
     <Card
       hover
@@ -66,7 +77,7 @@ export function LessonCard({
           className="w-full pointer-events-none"
           onClick={onClick}
         >
-          {progress > 0 ? 'Continue' : 'Start Lesson'}
+          {actionLabel}
         </Button>
       </div>
     </Card>

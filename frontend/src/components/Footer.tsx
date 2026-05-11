@@ -2,6 +2,7 @@ import React from "react";
 import { Facebook, Instagram, Mail, Youtube } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 
 interface FooterProps {
   onNavigate: (page: string) => void;
@@ -11,6 +12,50 @@ const supportEmail = "support@qazaqvideolearn.com";
 
 export function Footer({ onNavigate }: FooterProps) {
   const { isAuthenticated, user } = useAuth();
+  const { language } = useAppPreferences();
+
+  const copy =
+    language === "ru"
+      ? {
+          description:
+            "Платформа для изучения казахского языка через видеоуроки, словарь и понятный трекер прогресса.",
+          learn: "Обучение",
+          beginner: "Начальный путь A1-A2",
+          intermediate: "Средний путь B1-B2",
+          lessons: "Видеоуроки",
+          vocabulary: "Словарь",
+          dashboard: "Кабинет",
+          studio: "Контент-студия",
+          support: "Поддержка",
+          faq: "Частые вопросы",
+          help: "Центр помощи",
+          contact: "Связаться",
+          privacy: "Политика конфиденциальности",
+          connect: "Контакты",
+          rights: "Все права защищены.",
+          supportSubject: "Поддержка Qazaq Video Learn",
+          feedbackSubject: "Отзыв о Qazaq Video Learn",
+        }
+      : {
+          description:
+            "Қазақ тілін бейнесабақтар, сөздік және түсінікті прогресс трекері арқылы үйренуге арналған платформа.",
+          learn: "Оқу",
+          beginner: "Бастапқы жол A1-A2",
+          intermediate: "Орта жол B1-B2",
+          lessons: "Бейнесабақтар",
+          vocabulary: "Сөздік",
+          dashboard: "Кабинет",
+          studio: "Контент студиясы",
+          support: "Қолдау",
+          faq: "Жиі сұрақтар",
+          help: "Көмек орталығы",
+          contact: "Байланыс",
+          privacy: "Құпиялылық саясаты",
+          connect: "Байланыс арналары",
+          rights: "Барлық құқықтар қорғалған.",
+          supportSubject: "Qazaq Video Learn қолдауы",
+          feedbackSubject: "Qazaq Video Learn туралы пікір",
+        };
 
   const scrollToSection = (sectionId: string) => {
     onNavigate("home");
@@ -41,20 +86,19 @@ export function Footer({ onNavigate }: FooterProps) {
               <div className="text-lg font-semibold">Qazaq Video Learn</div>
             </button>
             <p className="text-sm text-muted-foreground">
-              Learn Kazakh through structured video lessons, vocabulary practice, and
-              progress tracking.
+              {copy.description}
             </p>
           </div>
 
           <div>
-            <h4 className="mb-4">Learn</h4>
+            <h4 className="mb-4">{copy.learn}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <button
                   className="transition-colors hover:text-primary"
                   onClick={() => onNavigate("catalog")}
                 >
-                  Beginner (A1-A2)
+                  {copy.beginner}
                 </button>
               </li>
               <li>
@@ -62,7 +106,7 @@ export function Footer({ onNavigate }: FooterProps) {
                   className="transition-colors hover:text-primary"
                   onClick={() => onNavigate("catalog")}
                 >
-                  Intermediate (B1-B2)
+                  {copy.intermediate}
                 </button>
               </li>
               <li>
@@ -70,7 +114,7 @@ export function Footer({ onNavigate }: FooterProps) {
                   className="transition-colors hover:text-primary"
                   onClick={() => onNavigate("catalog")}
                 >
-                  Video Lessons
+                  {copy.lessons}
                 </button>
               </li>
               <li>
@@ -78,7 +122,7 @@ export function Footer({ onNavigate }: FooterProps) {
                   className="transition-colors hover:text-primary"
                   onClick={() => onNavigate(isAuthenticated ? "vocabulary" : "login")}
                 >
-                  Vocabulary
+                  {copy.vocabulary}
                 </button>
               </li>
               <li>
@@ -94,21 +138,21 @@ export function Footer({ onNavigate }: FooterProps) {
                     )
                   }
                 >
-                  {user?.is_content_manager ? "Content Studio" : "Dashboard"}
+                  {user?.is_content_manager ? copy.studio : copy.dashboard}
                 </button>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-4">Support</h4>
+            <h4 className="mb-4">{copy.support}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <button
                   className="transition-colors hover:text-primary"
                   onClick={() => scrollToSection("faq-section")}
                 >
-                  FAQ
+                  {copy.faq}
                 </button>
               </li>
               <li>
@@ -116,15 +160,15 @@ export function Footer({ onNavigate }: FooterProps) {
                   className="transition-colors hover:text-primary"
                   onClick={() => scrollToSection("support-section")}
                 >
-                  Help Center
+                  {copy.help}
                 </button>
               </li>
               <li>
                 <button
                   className="transition-colors hover:text-primary"
-                  onClick={() => openSupportEmail("Qazaq Video Learn Support")}
+                  onClick={() => openSupportEmail(copy.supportSubject)}
                 >
-                  Contact Us
+                  {copy.contact}
                 </button>
               </li>
               <li>
@@ -134,14 +178,14 @@ export function Footer({ onNavigate }: FooterProps) {
                   rel="noreferrer"
                   className="transition-colors hover:text-primary"
                 >
-                  Privacy Policy
+                  {copy.privacy}
                 </a>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-4">Connect</h4>
+            <h4 className="mb-4">{copy.connect}</h4>
             <div className="flex gap-3">
               <a
                 href="https://www.facebook.com/"
@@ -169,7 +213,7 @@ export function Footer({ onNavigate }: FooterProps) {
               </a>
               <button
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-white"
-                onClick={() => openSupportEmail("Qazaq Video Learn Feedback")}
+                onClick={() => openSupportEmail(copy.feedbackSubject)}
               >
                 <Mail className="h-5 w-5" />
               </button>
@@ -178,7 +222,7 @@ export function Footer({ onNavigate }: FooterProps) {
         </div>
 
         <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-          <p>(c) 2026 Qazaq Video Learn. All rights reserved.</p>
+          <p>(c) 2026 Qazaq Video Learn. {copy.rights}</p>
         </div>
       </div>
     </footer>

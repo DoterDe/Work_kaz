@@ -2,6 +2,7 @@ import React from "react";
 import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 
 interface MobileNavProps {
   currentPage: string;
@@ -10,18 +11,38 @@ interface MobileNavProps {
 
 export const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
   const { isAuthenticated, user } = useAuth();
+  const { language } = useAppPreferences();
+
+  const copy =
+    language === "ru"
+      ? {
+          home: "Главная",
+          lessons: "Уроки",
+          words: "Слова",
+          studio: "Студия",
+          profile: "Профиль",
+          login: "Вход",
+        }
+      : {
+          home: "Басты бет",
+          lessons: "Сабақтар",
+          words: "Сөздер",
+          studio: "Студия",
+          profile: "Профиль",
+          login: "Кіру",
+        };
 
   const navItems = [
-    { icon: Home, label: "Home", page: "home" },
+    { icon: Home, label: copy.home, page: "home" },
     ...(isAuthenticated
       ? [
-          { icon: BookOpen, label: "Lessons", page: "catalog" },
-          { icon: GraduationCap, label: "Words", page: "vocabulary" },
+          { icon: BookOpen, label: copy.lessons, page: "catalog" },
+          { icon: GraduationCap, label: copy.words, page: "vocabulary" },
           ...(user?.is_content_manager
-            ? [{ icon: Sparkles, label: "Studio", page: "studio" }]
-            : [{ icon: User, label: "Profile", page: "dashboard" }]),
+            ? [{ icon: Sparkles, label: copy.studio, page: "studio" }]
+            : [{ icon: User, label: copy.profile, page: "dashboard" }]),
         ]
-      : [{ icon: User, label: "Login", page: "login" }]),
+      : [{ icon: User, label: copy.login, page: "login" }]),
   ];
 
   return (

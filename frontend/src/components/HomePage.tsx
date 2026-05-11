@@ -13,6 +13,7 @@ import {
 
 import api from "../api/axios";
 import { useAuth } from "../auth/AuthContext";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 import { extractApiErrorMessage } from "../utils/apiError";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ThreeHeroCanvas } from "./ThreeHeroCanvas";
@@ -50,6 +51,7 @@ interface LessonsMeta {
 
 export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
   const { isAuthenticated } = useAuth();
+  const { language, translateCategory } = useAppPreferences();
   const [featuredLessons, setFeaturedLessons] = useState<Lesson[]>([]);
   const [meta, setMeta] = useState<LessonsMeta | null>(null);
   const [loadingLessons, setLoadingLessons] = useState(false);
@@ -58,6 +60,311 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
 
   const heroRef = useRef<HTMLElement | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
+
+  const copy =
+    language === "ru"
+      ? {
+          statsError: "Не удалось загрузить статистику главной страницы.",
+          featuredError: "Не удалось загрузить рекомендуемые уроки.",
+          heroBadge: "Короткие живые уроки для уверенного старта",
+          heroTitle: "Изучайте казахский через настоящие видеосюжеты",
+          heroDescription:
+            "Соберите устойчивую языковую практику: смотрите, разбирайте слова, проходите мини-тесты и фиксируйте прогресс без перегруза.",
+          startLearning: "Начать обучение",
+          practiceVocabulary: "Тренировать словарь",
+          publishedLessons: "Опубликованные уроки",
+          averageRating: "Средний рейтинг",
+          topCategory: "Главная категория",
+          fallbackCategory: "Путешествия",
+          cinematicTitle: "Визуально насыщенный формат обучения",
+          cinematicDescription:
+            "Страница двигается мягко и создаёт ощущение глубины, чтобы обучение выглядело современно и живо.",
+          flowTitle: "Как устроен учебный цикл",
+          flowDescription:
+            "Понятная последовательность, которая переводит ученика от просмотра к активной речи и закреплению.",
+          levelsTitle: "Выберите свой уровень",
+          levelsDescription:
+            "Двигайтесь по понятной траектории от первых фраз до уверенного общения.",
+          topLessonsTitle: "Лучшие уроки для старта",
+          topLessonsDescription:
+            "Подборка уроков с высоким рейтингом, чтобы вы быстрее вошли в ритм.",
+          openCatalog: "Открыть каталог",
+          signInTitle: "Войдите, чтобы открыть уроки",
+          signInDescription:
+            "Каталог, словарь и личный кабинет становятся доступны после авторизации.",
+          loginToContinue: "Войти и продолжить",
+          noLessonsTitle: "Рекомендуемые уроки пока не появились",
+          noLessonsDescription:
+            "Добавьте опубликованные уроки через Django Admin или Content Studio, и они появятся здесь.",
+          supportTitle: "Всё, что нужно для устойчивой практики",
+          supportDescription:
+            "Короткий, но сильный набор инструментов для просмотра, запоминания и самопроверки.",
+          faqTitle: "Частые вопросы",
+          faqDescription:
+            "Короткие ответы про уроки, прогресс и публикацию контента.",
+          lessonsSuffix: "уроков",
+          levelCards: [
+            {
+              level: "A1",
+              title: "Старт",
+              description: "Освойте базовые слова, приветствия и повседневные фразы.",
+              icon: BookOpen,
+            },
+            {
+              level: "A2",
+              title: "Разговорная база",
+              description: "Говорите о повседневных темах и увереннее стройте фразы.",
+              icon: Target,
+            },
+            {
+              level: "B1",
+              title: "Уверенное общение",
+              description: "Понимайте длинные диалоги и культурный контекст.",
+              icon: TrendingUp,
+            },
+            {
+              level: "B2",
+              title: "Свободная практика",
+              description: "Используйте более сложные структуры и звучите естественно.",
+              icon: Award,
+            },
+          ],
+          features: [
+            {
+              icon: Play,
+              title: "Живые видеоуроки",
+              description: "Реальная речь, ситуации и словарь, который можно сразу применить.",
+            },
+            {
+              icon: Headphones,
+              title: "Гибкие субтитры",
+              description: "Переключайтесь между казахским, русским и смешанным режимом.",
+            },
+            {
+              icon: FileText,
+              title: "Умные карточки слов",
+              description: "Повторяйте слова с примерами, произношением и контекстом.",
+            },
+            {
+              icon: BarChart3,
+              title: "Прогресс без хаоса",
+              description: "Следите за уроками, тестами и темпом обучения в одном месте.",
+            },
+          ],
+          learnSteps: [
+            {
+              index: "01",
+              title: "Смотрите",
+              description: "Начните с короткого видео и поймайте живой контекст.",
+            },
+            {
+              index: "02",
+              title: "Собирайте слова",
+              description: "Перенесите ключевые слова урока в личную языковую базу.",
+            },
+            {
+              index: "03",
+              title: "Закрепляйте тестом",
+              description: "Проверьте понимание и сразу увидьте результат.",
+            },
+            {
+              index: "04",
+              title: "Держите темп",
+              description: "Возвращайтесь туда, где остановились, и двигайтесь дальше.",
+            },
+          ],
+          parallaxPhotos: [
+            {
+              title: "Погружение в звучание",
+              subtitle: "Живая речь с контекстными субтитрами",
+              image:
+                "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80",
+              depth: "-0.45",
+            },
+            {
+              title: "Практика без формальности",
+              subtitle: "Слова и тесты, связанные с каждым уроком",
+              image:
+                "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1600&q=80",
+              depth: "0.2",
+            },
+            {
+              title: "Прогресс на виду",
+              subtitle: "Понятная траектория роста в одном кабинете",
+              image:
+                "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1600&q=80",
+              depth: "0.7",
+            },
+          ],
+          faqItems: [
+            {
+              question: "Можно ли продолжить с того места, где я остановился?",
+              answer:
+                "Да. Прогресс по урокам и результаты тестов привязаны к вашему аккаунту и сохраняются между переходами.",
+            },
+            {
+              question: "Как засчитывается полное прохождение урока?",
+              answer:
+                "Посмотрите видео, разберите словарь урока и отправьте финальный тест. Успешная сдача отмечает урок как завершённый.",
+            },
+            {
+              question: "Кто может добавлять уроки и тесты?",
+              answer:
+                "Публикацией и редактированием контента занимается только аккаунт контент-менеджера через Content Studio.",
+            },
+          ],
+        }
+      : {
+          statsError: "Басты бет статистикасын жүктеу мүмкін болмады.",
+          featuredError: "Ұсынылған сабақтарды жүктеу мүмкін болмады.",
+          heroBadge: "Сенімді бастауға арналған қысқа әрі тірі сабақтар",
+          heroTitle: "Қазақ тілін шынайы бейнесюжеттер арқылы үйреніңіз",
+          heroDescription:
+            "Тұрақты тілдік әдет қалыптастырыңыз: көріңіз, сөздерді талдаңыз, қысқа тесттен өтіңіз және прогресті артық жүктемесіз бақылаңыз.",
+          startLearning: "Оқуды бастау",
+          practiceVocabulary: "Сөздікті жаттықтыру",
+          publishedLessons: "Жарияланған сабақтар",
+          averageRating: "Орташа рейтинг",
+          topCategory: "Негізгі санат",
+          fallbackCategory: "Саяхат",
+          cinematicTitle: "Көрнекі әрі әсерлі оқу форматы",
+          cinematicDescription:
+            "Парақ жұмсақ қозғалып, тереңдік әсерін береді, сондықтан оқу заманауи әрі тірі сезіледі.",
+          flowTitle: "Оқу циклі қалай жұмыс істейді",
+          flowDescription:
+            "Оқушыны қараудан белсенді сөйлеуге және бекітуге апаратын түсінікті реттік жүйе.",
+          levelsTitle: "Өз деңгейіңізді таңдаңыз",
+          levelsDescription:
+            "Алғашқы тіркестерден сенімді қарым-қатынасқа дейінгі айқын траекториямен жүріңіз.",
+          topLessonsTitle: "Бастауға арналған үздік сабақтар",
+          topLessonsDescription:
+            "Ырғаққа тез ену үшін жоғары бағаланған сабақтар топтамасы.",
+          openCatalog: "Каталогты ашу",
+          signInTitle: "Сабақтарды ашу үшін кіріңіз",
+          signInDescription:
+            "Каталог, сөздік және жеке кабинет авторизациядан кейін қолжетімді болады.",
+          loginToContinue: "Кіріп, жалғастыру",
+          noLessonsTitle: "Ұсынылған сабақтар әзірге жоқ",
+          noLessonsDescription:
+            "Жарияланған сабақтарды Django Admin немесе Content Studio арқылы қоссаңыз, олар осы жерде көрінеді.",
+          supportTitle: "Тұрақты тәжірибеге керектің бәрі",
+          supportDescription:
+            "Көру, есте сақтау және өзін-өзі тексеру үшін қысқа, бірақ қуатты құралдар жинағы.",
+          faqTitle: "Жиі қойылатын сұрақтар",
+          faqDescription:
+            "Сабақтар, прогресс және контент жариялау туралы қысқа жауаптар.",
+          lessonsSuffix: "сабақ",
+          levelCards: [
+            {
+              level: "A1",
+              title: "Бастау",
+              description: "Негізгі сөздер, амандасу және күнделікті тіркестерді меңгеріңіз.",
+              icon: BookOpen,
+            },
+            {
+              level: "A2",
+              title: "Сөйлеу негізі",
+              description: "Күнделікті тақырыптарда сенімдірек сөйлеп, сөйлем құрастырыңыз.",
+              icon: Target,
+            },
+            {
+              level: "B1",
+              title: "Сенімді қарым-қатынас",
+              description: "Ұзақ диалогтар мен мәдени контексті жақсырақ түсініңіз.",
+              icon: TrendingUp,
+            },
+            {
+              level: "B2",
+              title: "Еркін тәжірибе",
+              description: "Күрделі құрылымдарды қолданып, табиғи сөйлеңіз.",
+              icon: Award,
+            },
+          ],
+          features: [
+            {
+              icon: Play,
+              title: "Тірі бейнесабақтар",
+              description: "Шынайы сөйлеу, жағдаяттар және бірден қолданылатын сөздік.",
+            },
+            {
+              icon: Headphones,
+              title: "Икемді субтитрлер",
+              description: "Қазақша, орысша және аралас режим арасында ауысыңыз.",
+            },
+            {
+              icon: FileText,
+              title: "Ақылды сөз карталары",
+              description: "Сөздерді мысалмен, айтылыммен және контекстпен қайталаңыз.",
+            },
+            {
+              icon: BarChart3,
+              title: "Тәртіпті прогресс",
+              description: "Сабақтар, тесттер және оқу қарқынын бір жерден қадағалаңыз.",
+            },
+          ],
+          learnSteps: [
+            {
+              index: "01",
+              title: "Көріңіз",
+              description: "Қысқа видео көріп, тірі контексті ұстап алыңыз.",
+            },
+            {
+              index: "02",
+              title: "Сөз жинаңыз",
+              description: "Сабақтың негізгі сөздерін жеке тілдік базаңызға қосыңыз.",
+            },
+            {
+              index: "03",
+              title: "Тестпен бекітіңіз",
+              description: "Түсінгеніңізді тексеріп, нәтижені бірден көріңіз.",
+            },
+            {
+              index: "04",
+              title: "Ырғақты сақтаңыз",
+              description: "Тоқтаған жеріңізден жалғастырып, ілгері жүріңіз.",
+            },
+          ],
+          parallaxPhotos: [
+            {
+              title: "Дыбысқа ену",
+              subtitle: "Контекстік субтитрлері бар тірі сөйлеу",
+              image:
+                "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80",
+              depth: "-0.45",
+            },
+            {
+              title: "Ресми емес практика",
+              subtitle: "Әр сабаққа байланысқан сөздер мен тесттер",
+              image:
+                "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1600&q=80",
+              depth: "0.2",
+            },
+            {
+              title: "Көрінетін прогресс",
+              subtitle: "Бір кабинеттегі анық өсу траекториясы",
+              image:
+                "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1600&q=80",
+              depth: "0.7",
+            },
+          ],
+          faqItems: [
+            {
+              question: "Тоқтаған жерімнен жалғастыра аламын ба?",
+              answer:
+                "Иә. Сабақ прогресі мен тест нәтижелері аккаунтқа байланады және беттер арасында сақталады.",
+            },
+            {
+              question: "Сабақ толық өту үшін не істеу керек?",
+              answer:
+                "Видеоны көріңіз, сабақ сөздігін қайталаңыз және қорытынды тест тапсырыңыз. Сәтті нәтиже сабақтың аяқталғанын белгілейді.",
+            },
+            {
+              question: "Сабақтар мен тесттерді кім қоса алады?",
+              answer:
+                "Контентті тек контент-менеджер аккаунты Content Studio арқылы жариялап, өңдей алады.",
+            },
+          ],
+        };
 
   const handleActionClick = (targetPage: string, lesson?: Lesson) => {
     if (isAuthenticated) {
@@ -77,7 +384,7 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       } catch (error) {
         setMeta(null);
         setRequestError((prev) =>
-          prev || extractApiErrorMessage(error, "Failed to load homepage stats.")
+          prev || extractApiErrorMessage(error, copy.statsError)
         );
       }
     };
@@ -101,7 +408,7 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       } catch (error) {
         setFeaturedLessons([]);
         setRequestError((prev) =>
-          prev || extractApiErrorMessage(error, "Failed to load featured lessons.")
+          prev || extractApiErrorMessage(error, copy.featuredError)
         );
       } finally {
         setLoadingLessons(false);
@@ -164,138 +471,27 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
     };
   }, [requestError]);
 
-  const levelCards = useMemo(
-    () => [
-      {
-        level: "A1",
-        title: "Beginner",
-        description: "Build confidence with core vocabulary and phrases.",
-        icon: BookOpen,
-      },
-      {
-        level: "A2",
-        title: "Elementary",
-        description: "Speak in daily topics with clearer grammar control.",
-        icon: Target,
-      },
-      {
-        level: "B1",
-        title: "Intermediate",
-        description: "Understand longer conversations and cultural context.",
-        icon: TrendingUp,
-      },
-      {
-        level: "B2",
-        title: "Upper Intermediate",
-        description: "Communicate naturally and practice advanced structures.",
-        icon: Award,
-      },
-    ],
-    []
-  );
-
-  const features = [
-    {
-      icon: Play,
-      title: "Video Lessons",
-      description: "Practice with native speech and realistic conversations.",
-    },
-    {
-      icon: Headphones,
-      title: "Subtitle Modes",
-      description: "Switch between Kazakh, Russian and combined subtitles.",
-    },
-    {
-      icon: FileText,
-      title: "Vocabulary Cards",
-      description: "Review key words with examples and pronunciation hints.",
-    },
-    {
-      icon: BarChart3,
-      title: "Progress Tracking",
-      description: "Measure completed lessons and monitor your learning pace.",
-    },
-  ];
-
-  const learnSteps = [
-    {
-      index: "01",
-      title: "Watch",
-      description: "Start with short native video lessons and context phrases.",
-    },
-    {
-      index: "02",
-      title: "Collect Words",
-      description: "Build a personal dictionary from each lesson topic.",
-    },
-    {
-      index: "03",
-      title: "Pass Test",
-      description: "Finish the lesson with a quiz and lock your score.",
-    },
-    {
-      index: "04",
-      title: "Track Growth",
-      description: "See progress and continue exactly where you stopped.",
-    },
-  ];
+  const levelCards = useMemo(() => copy.levelCards, [copy.levelCards]);
+  const features = copy.features;
+  const learnSteps = copy.learnSteps;
 
   const heroStats = [
     {
-      label: "Published Lessons",
+      label: copy.publishedLessons,
       value: meta?.total_lessons?.toString() ?? "0",
     },
     {
-      label: "Average Rating",
+      label: copy.averageRating,
       value: meta ? meta.average_rating.toFixed(1) : "0.0",
     },
     {
-      label: "Top Category",
-      value: meta?.categories?.[0]?.category ?? "Travel",
+      label: copy.topCategory,
+      value: translateCategory(meta?.categories?.[0]?.category ?? copy.fallbackCategory),
     },
   ];
 
-  const parallaxPhotos = [
-    {
-      title: "Immersive Listening",
-      subtitle: "Native speech with contextual subtitles",
-      image:
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80",
-      depth: "-0.45",
-    },
-    {
-      title: "Real Practice",
-      subtitle: "Vocabulary and tests that match each lesson",
-      image:
-        "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1600&q=80",
-      depth: "0.2",
-    },
-    {
-      title: "Visible Progress",
-      subtitle: "See your level growth in one clean dashboard",
-      image:
-        "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1600&q=80",
-      depth: "0.7",
-    },
-  ];
-
-  const faqItems = [
-    {
-      question: "Can I continue from where I stopped?",
-      answer:
-        "Yes. Lesson progress and test results are tied to your account, so your state is preserved across navigation.",
-    },
-    {
-      question: "How do I unlock full lesson completion?",
-      answer:
-        "Watch the video, review lesson vocabulary and submit the final quiz. Passing the quiz marks the lesson as completed.",
-    },
-    {
-      question: "Who can add lessons and tests?",
-      answer:
-        "Only content manager accounts can open Content Studio and publish/edit lessons, tests and dictionary content.",
-    },
-  ];
+  const parallaxPhotos = copy.parallaxPhotos;
+  const faqItems = copy.faqItems;
 
   return (
     <div>
@@ -314,26 +510,25 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 lg:grid-cols-2 lg:py-24">
           <div className="animate-fade-slide-up">
             <div className="mb-4 inline-flex rounded-full border border-border bg-card px-4 py-2 text-sm">
-              Learn Kazakh with practical, short-form lessons
+              {copy.heroBadge}
             </div>
             <h1 className="mb-5 text-4xl leading-tight lg:text-6xl">
-              Learn Kazakh through real video lessons
+              {copy.heroTitle}
             </h1>
             <p className="mb-8 text-lg text-muted-foreground">
-              Build speaking confidence using native content, vocabulary review,
-              and progress analytics that keep your routine consistent.
+              {copy.heroDescription}
             </p>
 
             <div className="mb-8 flex flex-wrap gap-3">
               <Button size="lg" onClick={() => handleActionClick("catalog")}>
-                Start Learning
+                {copy.startLearning}
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 onClick={() => handleActionClick("vocabulary")}
               >
-                Practice Vocabulary
+                {copy.practiceVocabulary}
               </Button>
             </div>
 
@@ -376,9 +571,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       <section ref={galleryRef} className="photo-parallax-section py-20">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mb-10 text-center">
-            <h2 className="mb-3">Cinematic Learning Experience</h2>
+            <h2 className="mb-3">{copy.cinematicTitle}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Large visual blocks move with scroll and create depth without slowing the page.
+              {copy.cinematicDescription}
             </p>
           </div>
           <div className="grid gap-6 lg:grid-cols-3">
@@ -414,9 +609,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       <section id="flow-section" className="bg-muted/40 py-20">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mb-10 text-center">
-            <h2 className="mb-3">How The Learning Flow Works</h2>
+            <h2 className="mb-3">{copy.flowTitle}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              A structured loop that helps learners move from video input to active speaking.
+              {copy.flowDescription}
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-4">
@@ -439,9 +634,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       <section className="bg-muted/40 py-20">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mb-10 text-center">
-            <h2 className="mb-3">Choose Your Level</h2>
+            <h2 className="mb-3">{copy.levelsTitle}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Follow a level-based path from beginner to upper intermediate.
+              {copy.levelsDescription}
             </p>
           </div>
 
@@ -463,7 +658,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
                   <LevelBadge level={item.level} size="md" />
                   <h3 className="mb-2 mt-3">{item.title}</h3>
                   <p className="mb-3 text-sm text-muted-foreground">{item.description}</p>
-                  <p className="text-sm text-primary">{count} lessons</p>
+                  <p className="text-sm text-primary">
+                    {count} {copy.lessonsSuffix}
+                  </p>
                 </Card>
               );
             })}
@@ -474,23 +671,23 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       <section className="mx-auto max-w-7xl px-4 py-20">
         <div className="mb-10 flex items-end justify-between gap-4">
           <div>
-            <h2 className="mb-2">Top Rated Lessons</h2>
+            <h2 className="mb-2">{copy.topLessonsTitle}</h2>
             <p className="text-muted-foreground">
-              Curated lessons to help you start with high-impact topics.
+              {copy.topLessonsDescription}
             </p>
           </div>
           <Button variant="outline" onClick={() => handleActionClick("catalog")}>
-            Open Catalog
+            {copy.openCatalog}
           </Button>
         </div>
 
         {!isAuthenticated && (
           <Card className="rounded-[24px] border-dashed text-center">
-            <h3 className="mb-2">Sign in to access lessons</h3>
+            <h3 className="mb-2">{copy.signInTitle}</h3>
             <p className="mb-5 text-muted-foreground">
-              The catalog and dashboard are available after authentication.
+              {copy.signInDescription}
             </p>
-            <Button onClick={() => onNavigate("login")}>Login to Continue</Button>
+            <Button onClick={() => onNavigate("login")}>{copy.loginToContinue}</Button>
           </Card>
         )}
 
@@ -549,9 +746,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
 
         {isAuthenticated && !loadingLessons && featuredLessons.length === 0 && (
           <Card className="rounded-[24px] text-center">
-            <h3 className="mb-2">No featured lessons yet</h3>
+            <h3 className="mb-2">{copy.noLessonsTitle}</h3>
             <p className="text-muted-foreground">
-              Add published lessons in Django Admin to populate this section.
+              {copy.noLessonsDescription}
             </p>
           </Card>
         )}
@@ -560,9 +757,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       <section id="support-section" className="bg-gradient-to-br from-primary/5 to-secondary/5 py-20">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mb-10 text-center">
-            <h2 className="mb-3">Everything Needed For Learning</h2>
+            <h2 className="mb-3">{copy.supportTitle}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              A compact toolkit focused on speaking practice and retention.
+              {copy.supportDescription}
             </p>
           </div>
 
@@ -591,9 +788,9 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
       <section id="faq-section" className="bg-muted/40 py-20">
         <div className="mx-auto max-w-4xl px-4">
           <div className="mb-8 text-center">
-            <h2 className="mb-3">FAQ</h2>
+            <h2 className="mb-3">{copy.faqTitle}</h2>
             <p className="text-muted-foreground">
-              Quick answers about lessons, progress, and content management.
+              {copy.faqDescription}
             </p>
           </div>
           <div className="space-y-3">

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Filter, SlidersHorizontal } from "lucide-react";
 
 import api from "../api/axios";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 import { extractApiErrorMessage } from "../utils/apiError";
 import { Card } from "./ui/Card";
 import { LessonCard } from "./ui/LessonCard";
@@ -29,6 +30,7 @@ interface Props {
 type SortOption = "newest" | "rating" | "duration" | "title";
 
 export function LessonsCatalog({ onNavigate }: Props) {
+  const { language, translateCategory, formatMinutes } = useAppPreferences();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState("");
@@ -40,6 +42,65 @@ export function LessonsCatalog({ onNavigate }: Props) {
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [onlyStarted, setOnlyStarted] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+
+  const copy =
+    language === "ru"
+      ? {
+          title: "Каталог видеоуроков",
+          subtitle: "Фильтруйте по уровню, теме и прогрессу, чтобы быстро найти следующий урок.",
+          lessons: "Уроки",
+          started: "Начато",
+          averageRating: "Средний рейтинг",
+          searchPlaceholder: "Поиск по названию или ключевому слову...",
+          levelLabel: "Уровень",
+          categoryLabel: "Тема",
+          onlyStarted: "Только начатые уроки",
+          clearAll: "Сбросить всё",
+          filters: "Фильтры",
+          sortBy: "Сортировка",
+          newest: "Сначала новые",
+          rating: "Сначала высокий рейтинг",
+          duration: "Сначала короткие",
+          titleSort: "По названию А-Я",
+          fetchError: "Не удалось загрузить уроки. Обновите страницу и попробуйте снова.",
+          showing: "Показано уроков",
+          noLessons: "По текущим условиям уроки не найдены",
+          noLessonsDescription: "Измените фильтры или поисковый запрос.",
+          resetFilters: "Сбросить фильтры",
+          allTopics: "Все темы",
+          activeLevel: "Уровень",
+          activeCategory: "Тема",
+          activeStarted: "Только начатые",
+          activeSearch: "Поиск",
+        }
+      : {
+          title: "Бейнесабақтар каталогы",
+          subtitle: "Келесі сабақты тез табу үшін деңгейді, тақырыпты және прогресті сүзгіден өткізіңіз.",
+          lessons: "Сабақтар",
+          started: "Басталған",
+          averageRating: "Орташа рейтинг",
+          searchPlaceholder: "Атауы немесе кілтсөз бойынша іздеу...",
+          levelLabel: "Деңгей",
+          categoryLabel: "Тақырып",
+          onlyStarted: "Тек басталған сабақтар",
+          clearAll: "Барлығын тазарту",
+          filters: "Сүзгілер",
+          sortBy: "Сұрыптау",
+          newest: "Алдымен жаңасы",
+          rating: "Алдымен жоғары рейтинг",
+          duration: "Алдымен қысқасы",
+          titleSort: "Атауы бойынша А-Я",
+          fetchError: "Сабақтарды жүктеу мүмкін болмады. Бетті жаңартып, қайта көріңіз.",
+          showing: "Көрсетілген сабақ саны",
+          noLessons: "Осы шарттар бойынша сабақтар табылмады",
+          noLessonsDescription: "Сүзгілерді немесе іздеу сұрауын өзгертіп көріңіз.",
+          resetFilters: "Сүзгілерді тазарту",
+          allTopics: "Барлық тақырып",
+          activeLevel: "Деңгей",
+          activeCategory: "Тақырып",
+          activeStarted: "Тек басталғаны",
+          activeSearch: "Іздеу",
+        };
 
   const levels = ["A1", "A2", "B1", "B2"];
   const categories = [
@@ -76,7 +137,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
       } catch (error) {
         setLessons([]);
         setRequestError(
-          extractApiErrorMessage(error, "Failed to load lessons. Please refresh the page.")
+          extractApiErrorMessage(error, copy.fetchError)
         );
       } finally {
         setLoading(false);
@@ -106,10 +167,10 @@ export function LessonsCatalog({ onNavigate }: Props) {
   }, [lessons]);
 
   const activeFilters = [
-    level ? `Level: ${level}` : null,
-    category ? `Category: ${category}` : null,
-    onlyStarted ? "Only started lessons" : null,
-    debouncedSearch ? `Search: ${debouncedSearch}` : null,
+    level ? `${copy.activeLevel}: ${level}` : null,
+    category ? `${copy.activeCategory}: ${translateCategory(category)}` : null,
+    onlyStarted ? copy.activeStarted : null,
+    debouncedSearch ? `${copy.activeSearch}: ${debouncedSearch}` : null,
   ].filter(Boolean) as string[];
 
   const clearFilters = () => {
@@ -126,22 +187,22 @@ export function LessonsCatalog({ onNavigate }: Props) {
       <section className="mb-8 rounded-[28px] border border-border bg-gradient-to-br from-card via-card to-primary/5 p-6">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="mb-2">Video Lessons Catalog</h1>
+            <h1 className="mb-2">{copy.title}</h1>
             <p className="text-muted-foreground">
-              Filter by level, category, and progress to find your next lesson.
+              {copy.subtitle}
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Card className="rounded-2xl p-4 text-center">
-              <p className="text-xs text-muted-foreground">Lessons</p>
+              <p className="text-xs text-muted-foreground">{copy.lessons}</p>
               <p className="text-xl font-semibold">{stats.total}</p>
             </Card>
             <Card className="rounded-2xl p-4 text-center">
-              <p className="text-xs text-muted-foreground">Started</p>
+              <p className="text-xs text-muted-foreground">{copy.started}</p>
               <p className="text-xl font-semibold">{stats.started}</p>
             </Card>
             <Card className="rounded-2xl p-4 text-center">
-              <p className="text-xs text-muted-foreground">Avg Rating</p>
+              <p className="text-xs text-muted-foreground">{copy.averageRating}</p>
               <p className="text-xl font-semibold">{stats.avgRating}</p>
             </Card>
           </div>
@@ -152,7 +213,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
         <div className="mb-4 flex gap-3">
           <SearchInput
             className="flex-1"
-            placeholder="Search by title or keyword..."
+            placeholder={copy.searchPlaceholder}
             value={search}
             onChange={setSearch}
           />
@@ -183,7 +244,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
               </span>
             ))}
             <button className="text-sm text-primary hover:text-[#1557CC]" onClick={clearFilters}>
-              Clear all
+              {copy.clearAll}
             </button>
           </div>
         )}
@@ -195,24 +256,24 @@ export function LessonsCatalog({ onNavigate }: Props) {
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <Filter size={18} />
-                <h3>Filters</h3>
+                <h3>{copy.filters}</h3>
               </div>
 
-              <label className="mb-2 block text-sm text-muted-foreground">Sort by</label>
+              <label className="mb-2 block text-sm text-muted-foreground">{copy.sortBy}</label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="w-full rounded-xl border border-border bg-input-background px-3 py-2"
               >
-                <option value="newest">Newest first</option>
-                <option value="rating">Highest rating</option>
-                <option value="duration">Shortest duration</option>
-                <option value="title">Title A-Z</option>
+                <option value="newest">{copy.newest}</option>
+                <option value="rating">{copy.rating}</option>
+                <option value="duration">{copy.duration}</option>
+                <option value="title">{copy.titleSort}</option>
               </select>
             </div>
 
             <div>
-              <label className="mb-2 block text-sm text-muted-foreground">Category</label>
+              <label className="mb-2 block text-sm text-muted-foreground">{copy.categoryLabel}</label>
               <div className="space-y-2">
                 {categories.map((item) => (
                   <button
@@ -224,7 +285,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
                         : "hover:bg-muted"
                     }`}
                   >
-                    {item}
+                    {item === "All Topics" ? copy.allTopics : translateCategory(item)}
                   </button>
                 ))}
               </div>
@@ -237,7 +298,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
                   checked={onlyStarted}
                   onChange={(e) => setOnlyStarted(e.target.checked)}
                 />
-                Only started lessons
+                {copy.onlyStarted}
               </label>
             </div>
           </Card>
@@ -266,8 +327,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
           ) : (
             <>
               <div className="mb-4 text-sm text-muted-foreground">
-                Showing {displayedLessons.length} lesson
-                {displayedLessons.length === 1 ? "" : "s"}
+                {copy.showing}: {displayedLessons.length}
               </div>
 
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -276,7 +336,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
                     key={lesson.id}
                     title={lesson.title}
                     level={lesson.level}
-                    duration={`${lesson.duration ?? lesson.duration_minutes} min`}
+                    duration={formatMinutes(lesson.duration ?? lesson.duration_minutes)}
                     thumbnail={`https://img.youtube.com/vi/${lesson.youtube_id}/hqdefault.jpg`}
                     progress={lesson.progress}
                     onClick={() => onNavigate("lesson", lesson)}
@@ -288,12 +348,10 @@ export function LessonsCatalog({ onNavigate }: Props) {
 
           {!loading && displayedLessons.length === 0 && (
             <Card className="rounded-[24px] py-12 text-center">
-              <h3 className="mb-2">No lessons found</h3>
-              <p className="mb-5 text-muted-foreground">
-                Try changing filters or search query.
-              </p>
+              <h3 className="mb-2">{copy.noLessons}</h3>
+              <p className="mb-5 text-muted-foreground">{copy.noLessonsDescription}</p>
               <button className="text-primary hover:text-[#1557CC]" onClick={clearFilters}>
-                Reset filters
+                {copy.resetFilters}
               </button>
             </Card>
           )}

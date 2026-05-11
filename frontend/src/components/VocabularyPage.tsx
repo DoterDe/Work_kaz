@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { BookOpen, Brain, Shuffle, Target } from "lucide-react";
 
 import api from "../api/axios";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 import { extractApiErrorMessage } from "../utils/apiError";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
@@ -73,6 +74,7 @@ interface QuizSubmitResponse {
 }
 
 export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
+  const { language, translateCategory, translateMode } = useAppPreferences();
   const [mode, setMode] = useState<Mode>("flashcards");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -90,6 +92,79 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
   const [quizResult, setQuizResult] = useState<QuizSubmitResponse | null>(null);
   const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
 
+  const copy =
+    language === "ru"
+      ? {
+          fetchError: "Не удалось загрузить словарь.",
+          quizGenerateError:
+            "Не удалось собрать квиз. Попробуйте другие фильтры или добавьте больше слов.",
+          quizSubmitError: "Не удалось отправить квиз.",
+          answerAll: "Ответьте на все вопросы перед отправкой квиза.",
+          title: "Vocabulary Lab",
+          subtitle: "Тренируйте слова из уроков и укрепляйте запоминание через разные режимы.",
+          backToLessons: "Назад к урокам",
+          totalWords: "Всего слов",
+          filtered: "По фильтру",
+          categories: "Категории",
+          search: "Искать слова или переводы...",
+          all: "Все",
+          loading: "Загружаем словарь...",
+          noWords: "По текущим фильтрам слова не найдены.",
+          card: "Карточка",
+          clickToFlip: "Нажмите, чтобы перевернуть",
+          noExample: "Пример пока не добавлен",
+          shuffle: "Перемешать",
+          next: "Дальше",
+          generating: "Генерируем...",
+          generateNewQuiz: "Собрать новый квиз",
+          noQuiz: "Квиз пока не загружен.",
+          question: "Вопрос",
+          submitQuiz: "Отправить квиз",
+          checking: "Проверяем...",
+          quizResult: "Результат квиза",
+          selected: "Ваш ответ",
+          correct: "Правильный",
+          recentAttempts: "Последние попытки",
+          noAttempts: "Попыток пока нет.",
+          example: "Пример",
+          general: "Общее",
+        }
+      : {
+          fetchError: "Сөздікті жүктеу мүмкін болмады.",
+          quizGenerateError:
+            "Квизді құрастыру мүмкін болмады. Басқа сүзгілерді қолданып көріңіз немесе көбірек сөз қосыңыз.",
+          quizSubmitError: "Квизді жіберу мүмкін болмады.",
+          answerAll: "Квизді жібермес бұрын барлық сұрақтарға жауап беріңіз.",
+          title: "Vocabulary Lab",
+          subtitle: "Сабақ сөздерін түрлі режимдер арқылы жаттықтырып, есте сақтауды күшейтіңіз.",
+          backToLessons: "Сабақтарға қайту",
+          totalWords: "Барлық сөз",
+          filtered: "Сүзгі бойынша",
+          categories: "Санаттар",
+          search: "Сөздер мен аудармаларды іздеу...",
+          all: "Барлығы",
+          loading: "Сөздік жүктеліп жатыр...",
+          noWords: "Қазіргі сүзгілер бойынша сөздер табылмады.",
+          card: "Карта",
+          clickToFlip: "Аудару үшін басыңыз",
+          noExample: "Мысал әлі қосылмаған",
+          shuffle: "Араластыру",
+          next: "Келесі",
+          generating: "Құрастырылып жатыр...",
+          generateNewQuiz: "Жаңа квиз құрастыру",
+          noQuiz: "Квиз әлі жүктелген жоқ.",
+          question: "Сұрақ",
+          submitQuiz: "Квизді жіберу",
+          checking: "Тексеріліп жатыр...",
+          quizResult: "Квиз нәтижесі",
+          selected: "Сіздің жауабыңыз",
+          correct: "Дұрыс жауап",
+          recentAttempts: "Соңғы талпыныстар",
+          noAttempts: "Әзірге талпыныстар жоқ.",
+          example: "Мысал",
+          general: "Жалпы",
+        };
+
   useEffect(() => {
     const loadWords = async () => {
       setLoading(true);
@@ -98,7 +173,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
         const res = await api.get<VocabularyWord[]>("/vocabulary/");
         setWords(res.data);
       } catch (error) {
-        setError(extractApiErrorMessage(error, "Failed to load dictionary."));
+        setError(extractApiErrorMessage(error, copy.fetchError));
       } finally {
         setLoading(false);
       }
@@ -188,7 +263,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
       setError(
         extractApiErrorMessage(
           error,
-          "Failed to generate quiz. Try different filters or add more words."
+          copy.quizGenerateError
         )
       );
     } finally {
@@ -199,7 +274,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
   const submitQuiz = async () => {
     if (!quizToken || quizQuestions.length === 0) return;
     if (Object.keys(quizAnswers).length !== quizQuestions.length) {
-      setError("Please answer all quiz questions before submitting.");
+      setError(copy.answerAll);
       return;
     }
 
@@ -221,7 +296,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
       setQuizResult(res.data);
       setQuizHistory(res.data.history);
     } catch (error) {
-      setError(extractApiErrorMessage(error, "Failed to submit quiz."));
+      setError(extractApiErrorMessage(error, copy.quizSubmitError));
     } finally {
       setQuizSubmitting(false);
     }
@@ -239,13 +314,13 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
         <div className="mb-8 rounded-[28px] border border-border bg-gradient-to-br from-card to-secondary/10 p-6">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="mb-2">Vocabulary Lab</h1>
+              <h1 className="mb-2">{copy.title}</h1>
               <p className="text-muted-foreground">
-                Practice words from all lessons and improve retention.
+                {copy.subtitle}
               </p>
             </div>
             <Button variant="outline" onClick={() => onNavigate("catalog")}>
-              Back to lessons
+              {copy.backToLessons}
             </Button>
           </div>
 
@@ -256,7 +331,13 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
                 <Card key={item.label} className="rounded-2xl p-4 text-center">
                   <Icon className={`mx-auto mb-2 h-5 w-5 ${item.color}`} />
                   <div className="text-xl font-semibold">{item.value}</div>
-                  <div className="text-xs text-muted-foreground">{item.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {item.label === "Total Words"
+                      ? copy.totalWords
+                      : item.label === "Filtered"
+                        ? copy.filtered
+                        : copy.categories}
+                  </div>
                 </Card>
               );
             })}
@@ -278,14 +359,14 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
               variant={mode === item ? "primary" : "ghost"}
               onClick={() => setMode(item)}
             >
-              {item}
+              {translateMode(item)}
             </Button>
           ))}
         </div>
 
         <div className="mb-4">
           <SearchInput
-            placeholder="Search words or translations..."
+            placeholder={copy.search}
             value={search}
             onChange={setSearch}
           />
@@ -302,7 +383,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
                   : "border border-border bg-card hover:bg-muted"
               }`}
             >
-              {category}
+              {category === "All" ? copy.all : translateCategory(category)}
             </button>
           ))}
         </div>
@@ -325,12 +406,12 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
       </Card>
 
       {loading ? (
-        <p className="py-10 text-center text-muted-foreground">Loading vocabulary...</p>
+        <p className="py-10 text-center text-muted-foreground">{copy.loading}</p>
       ) : null}
 
       {!loading && filteredWords.length === 0 && (
         <Card className="rounded-[28px] py-10 text-center">
-          No words found for the current filters.
+          {copy.noWords}
         </Card>
       )}
 
@@ -342,10 +423,10 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
               <p className="mb-2 text-sm text-muted-foreground">{word.pronunciation || "-"}</p>
               <p className="mb-3">{word.translation}</p>
               {word.example && (
-                <p className="mb-3 text-sm text-muted-foreground">Example: {word.example}</p>
+                <p className="mb-3 text-sm text-muted-foreground">{copy.example}: {word.example}</p>
               )}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{word.category || "General"}</span>
+                <span>{translateCategory(word.category || "General") || copy.general}</span>
                 <span>{word.level || "-"}</span>
               </div>
             </Card>
@@ -360,20 +441,20 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
             onClick={() => setShowBack((prev) => !prev)}
           >
             <div className="mb-4 text-xs text-muted-foreground">
-              Card {flashcardIndex + 1} / {filteredWords.length}
+              {copy.card} {flashcardIndex + 1} / {filteredWords.length}
             </div>
             {!showBack ? (
               <>
                 <h2 className="mb-2">{currentFlashcard.word}</h2>
                 <p className="text-muted-foreground">
-                  {currentFlashcard.pronunciation || "Click to flip"}
+                  {currentFlashcard.pronunciation || copy.clickToFlip}
                 </p>
               </>
             ) : (
               <>
                 <h2 className="mb-2">{currentFlashcard.translation}</h2>
                 <p className="text-muted-foreground">
-                  {currentFlashcard.example || "No example yet"}
+                  {currentFlashcard.example || copy.noExample}
                 </p>
               </>
             )}
@@ -381,9 +462,9 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
           <div className="mt-4 flex justify-center gap-3">
             <Button variant="outline" onClick={shuffleFlashcards}>
               <Shuffle className="h-4 w-4" />
-              Shuffle
+              {copy.shuffle}
             </Button>
-            <Button onClick={nextFlashcard}>Next</Button>
+            <Button onClick={nextFlashcard}>{copy.next}</Button>
           </div>
         </div>
       )}
@@ -392,7 +473,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
         <div className="space-y-6">
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => void generateQuiz()} disabled={quizLoading}>
-              {quizLoading ? "Generating..." : "Generate New Quiz"}
+              {quizLoading ? copy.generating : copy.generateNewQuiz}
             </Button>
           </div>
 
@@ -401,7 +482,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
               {quizQuestions.map((question, index) => (
                 <Card key={question.question_word_id} className="rounded-[24px]">
                   <div className="mb-2 text-xs text-muted-foreground">
-                    Question {index + 1} / {quizQuestions.length}
+                    {copy.question} {index + 1} / {quizQuestions.length}
                   </div>
                   <h3 className="mb-1">{question.word}</h3>
                   <p className="mb-3 text-sm text-muted-foreground">
@@ -432,21 +513,21 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
             </div>
           ) : (
             <Card className="rounded-[24px] text-center">
-              No quiz questions loaded yet.
+              {copy.noQuiz}
             </Card>
           )}
 
           {quizQuestions.length > 0 && (
             <div className="flex justify-end">
               <Button onClick={() => void submitQuiz()} disabled={quizSubmitting || quizLoading}>
-                {quizSubmitting ? "Checking..." : "Submit Quiz"}
+                {quizSubmitting ? copy.checking : copy.submitQuiz}
               </Button>
             </div>
           )}
 
           {quizResult && (
             <Card className="rounded-[24px]">
-              <h3 className="mb-2">Quiz Result</h3>
+              <h3 className="mb-2">{copy.quizResult}</h3>
               <p className="mb-4 text-sm text-muted-foreground">
                 Score: {quizResult.score_percent}% ({quizResult.correct_answers}/
                 {quizResult.total_questions})
@@ -461,8 +542,8 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
                         : "border-destructive/30 bg-destructive/10"
                     }`}
                   >
-                    <span className="font-medium">{item.question_word}</span> - selected:{" "}
-                    {item.selected_translation} - correct: {item.correct_translation}
+                    <span className="font-medium">{item.question_word}</span> - {copy.selected}:{" "}
+                    {item.selected_translation} - {copy.correct}: {item.correct_translation}
                   </div>
                 ))}
               </div>
@@ -470,7 +551,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
           )}
 
           <Card className="rounded-[24px]">
-            <h3 className="mb-3">Recent Quiz Attempts</h3>
+            <h3 className="mb-3">{copy.recentAttempts}</h3>
             {quizHistory.length > 0 ? (
               <div className="space-y-2">
                 {quizHistory.slice(0, 10).map((attempt) => (
@@ -488,7 +569,7 @@ export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No attempts yet.</p>
+              <p className="text-sm text-muted-foreground">{copy.noAttempts}</p>
             )}
           </Card>
         </div>

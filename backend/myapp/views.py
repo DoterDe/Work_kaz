@@ -410,11 +410,31 @@ class LessonTestSubmitView(APIView):
             )
 
         correct_count = 0
+        review = []
         for question in questions:
-            correct_option_ids = [opt.id for opt in question.options.all() if opt.is_correct]
+            options = list(question.options.all())
+            correct_option_ids = [opt.id for opt in options if opt.is_correct]
             selected_option = answer_map.get(question.id)
             if selected_option in correct_option_ids:
                 correct_count += 1
+            selected_option_obj = next((opt for opt in options if opt.id == selected_option), None)
+            correct_option_obj = next((opt for opt in options if opt.is_correct), None)
+            review.append(
+                {
+                    "question_id": question.id,
+                    "question_text": question.question_text,
+                    "selected_option_id": selected_option,
+                    "selected_option_text": selected_option_obj.option_text
+                    if selected_option_obj
+                    else "",
+                    "correct_option_id": correct_option_obj.id if correct_option_obj else None,
+                    "correct_option_text": correct_option_obj.option_text
+                    if correct_option_obj
+                    else "",
+                    "is_correct": selected_option in correct_option_ids,
+                    "explanation": question.explanation,
+                }
+            )
 
         total_questions = len(questions)
         score_percent = round((correct_count / total_questions) * 100, 1)
@@ -460,6 +480,7 @@ class LessonTestSubmitView(APIView):
                 "passed": passed,
                 "progress": progress_item.progress,
                 "completed": progress_item.completed,
+                "review": review,
             }
         )
 

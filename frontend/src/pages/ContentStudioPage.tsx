@@ -18,6 +18,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { LevelBadge } from "../components/ui/LevelBadge";
 import { ProgressBar } from "../components/ui/ProgressBar";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 import { extractApiErrorMessage } from "../utils/apiError";
 
 type StudioTab = "lesson" | "dictionary" | "students" | "analytics";
@@ -169,6 +170,8 @@ const makeLessonWord = (): LessonWordInput => ({
 });
 
 export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate }) => {
+  const { language, locale, translateCategory } = useAppPreferences();
+  const isRu = language === "ru";
   const [activeTab, setActiveTab] = useState<StudioTab>("lesson");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -221,12 +224,28 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
 
   const tabs = useMemo(
     () => [
-      { id: "lesson", label: "Lesson Template", icon: Video },
-      { id: "dictionary", label: "Dictionary", icon: BookOpenCheck },
-      { id: "students", label: "Students Progress", icon: UsersRound },
-      { id: "analytics", label: "Test Analytics", icon: BarChart3 },
+      {
+        id: "lesson",
+        label: isRu ? "Конструктор уроков" : "Сабақ конструкторы",
+        icon: Video,
+      },
+      {
+        id: "dictionary",
+        label: isRu ? "Словарь" : "Сөздік",
+        icon: BookOpenCheck,
+      },
+      {
+        id: "students",
+        label: isRu ? "Прогресс учеников" : "Оқушы прогресі",
+        icon: UsersRound,
+      },
+      {
+        id: "analytics",
+        label: isRu ? "Аналитика тестов" : "Тест аналитикасы",
+        icon: BarChart3,
+      },
     ] as const,
-    []
+    [isRu]
   );
 
   const resetFeedback = () => {
@@ -238,7 +257,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
     if (!isoValue) return "-";
     const date = new Date(isoValue);
     if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleString();
+    return date.toLocaleString(locale);
   };
 
   const loadAnalytics = async (lessonId?: number) => {
@@ -274,7 +293,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       setError(
         extractApiErrorMessage(
           error,
-          "Studio endpoints are unavailable. Check that you are logged in as the content manager."
+          isRu
+            ? "Эндпоинты студии недоступны. Проверьте, что вы вошли как контент-менеджер."
+            : "Студия эндпоинттері қолжетімсіз. Контент-менеджер ретінде кіргеніңізді тексеріңіз."
         )
       );
     } finally {
@@ -458,9 +479,16 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       setLessonWords(preparedWords);
 
       setActiveTab("lesson");
-      setSuccess("Lesson loaded into editor.");
+      setSuccess(isRu ? "Урок загружен в редактор." : "Сабақ редакторға жүктелді.");
     } catch (error) {
-      setError(extractApiErrorMessage(error, "Failed to load lesson template for editing."));
+      setError(
+        extractApiErrorMessage(
+          error,
+          isRu
+            ? "Не удалось загрузить шаблон урока для редактирования."
+            : "Сабақ шаблонын редакциялау үшін жүктеу мүмкін болмады."
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -474,10 +502,15 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       if (editingLessonId === lessonId) {
         resetLessonEditor();
       }
-      setSuccess("Lesson deleted successfully.");
+      setSuccess(isRu ? "Урок удалён." : "Сабақ өшірілді.");
       await loadStudioData(true);
     } catch (error) {
-      setError(extractApiErrorMessage(error, "Failed to delete lesson."));
+      setError(
+        extractApiErrorMessage(
+          error,
+          isRu ? "Не удалось удалить урок." : "Сабақты өшіру мүмкін болмады."
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -528,14 +561,18 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
             words: wordsPayload,
           }),
         ]);
-        setSuccess("Lesson template updated successfully.");
+        setSuccess(
+          isRu ? "Шаблон урока успешно обновлён." : "Сабақ шаблоны сәтті жаңартылды."
+        );
       } else {
         await api.post("/studio/lessons/template/", {
           ...lessonPayload,
           test_questions: questionsPayload,
           vocabulary_words: wordsPayload,
         });
-        setSuccess("Lesson template saved successfully.");
+        setSuccess(
+          isRu ? "Шаблон урока успешно сохранён." : "Сабақ шаблоны сәтті сақталды."
+        );
       }
 
       resetLessonEditor();
@@ -544,7 +581,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       setError(
         extractApiErrorMessage(
           error,
-          "Failed to save lesson template. Please validate fields and try again."
+          isRu
+            ? "Не удалось сохранить шаблон урока. Проверьте поля и попробуйте снова."
+            : "Сабақ шаблонын сақтау мүмкін болмады. Өрістерді тексеріп, қайта көріңіз."
         )
       );
     } finally {
@@ -574,10 +613,15 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       if (editingWordId === wordId) {
         resetWordEditor();
       }
-      setSuccess("Word deleted successfully.");
+      setSuccess(isRu ? "Слово удалено." : "Сөз өшірілді.");
       await loadStudioData(true);
     } catch (error) {
-      setError(extractApiErrorMessage(error, "Failed to delete word."));
+      setError(
+        extractApiErrorMessage(
+          error,
+          isRu ? "Не удалось удалить слово." : "Сөзді өшіру мүмкін болмады."
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -593,16 +637,23 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       };
       if (editingWordId) {
         await api.patch(`/studio/vocabulary/${editingWordId}/`, payload);
-        setSuccess("Word updated successfully.");
+        setSuccess(isRu ? "Слово обновлено." : "Сөз жаңартылды.");
       } else {
         await api.post("/studio/vocabulary/", payload);
-        setSuccess("Word added to dictionary.");
+        setSuccess(isRu ? "Слово добавлено в словарь." : "Сөз сөздікке қосылды.");
       }
 
       resetWordEditor();
       await loadStudioData(true);
     } catch (error) {
-      setError(extractApiErrorMessage(error, "Failed to save dictionary word."));
+      setError(
+        extractApiErrorMessage(
+          error,
+          isRu
+            ? "Не удалось сохранить слово словаря."
+            : "Сөзді сөздікке сақтау мүмкін болмады."
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -616,7 +667,12 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
         analyticsLessonFilter !== "all" ? Number(analyticsLessonFilter) : undefined;
       await Promise.all([loadAnalytics(lessonId), loadAuditLogs()]);
     } catch (error) {
-      setError(extractApiErrorMessage(error, "Failed to load analytics."));
+      setError(
+        extractApiErrorMessage(
+          error,
+          isRu ? "Не удалось загрузить аналитику." : "Аналитиканы жүктеу мүмкін болмады."
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -628,9 +684,13 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
     }
   }, [activeTab, analyticsLessonFilter]);
 
-  const previewLessonTitle = lessonForm.title.trim() || "Your lesson title";
+  const previewLessonTitle =
+    lessonForm.title.trim() || (isRu ? "Название урока" : "Сабақ атауы");
   const previewLessonDescription =
-    lessonForm.description.trim() || "Lesson description preview will appear here.";
+    lessonForm.description.trim() ||
+    (isRu
+      ? "Здесь появится краткое описание урока."
+      : "Мұнда сабақтың қысқаша сипаттамасы көрінеді.");
   const previewLessonDuration = Number(lessonForm.duration_minutes) || 0;
   const previewYoutubeId = lessonForm.youtube_id.trim();
   const previewThumbnail = previewYoutubeId
@@ -659,13 +719,15 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="mb-2">Content Studio</h1>
+            <h1 className="mb-2">{isRu ? "Content Studio" : "Content Studio"}</h1>
             <p className="text-muted-foreground">
-              Single-manager control panel for lessons, tests, words and student analytics.
+              {isRu
+                ? "Единая студия для управления уроками, тестами, словарём и аналитикой учеников."
+                : "Сабақтарды, тесттерді, сөздікті және оқушы аналитикасын басқаруға арналған біртұтас студия."}
             </p>
           </div>
           <Button variant="outline" onClick={() => onNavigate("dashboard")}>
-            Back to Dashboard
+            {isRu ? "Назад в кабинет" : "Кабинетке оралу"}
           </Button>
         </div>
 
@@ -709,19 +771,27 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
           <Card className="rounded-[28px]">
             <div className="mb-4 flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-primary" />
-              <h2>{editingLessonId ? `Editing Lesson #${editingLessonId}` : "New Lesson Template"}</h2>
+              <h2>
+                {editingLessonId
+                  ? isRu
+                    ? `Редактирование урока #${editingLessonId}`
+                    : `Сабақты өңдеу #${editingLessonId}`
+                  : isRu
+                    ? "Новый шаблон урока"
+                    : "Жаңа сабақ шаблоны"}
+              </h2>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Lesson title"
+                placeholder={isRu ? "Название урока" : "Сабақ атауы"}
                 value={lessonForm.title}
                 onChange={(e) => setLessonForm((prev) => ({ ...prev, title: e.target.value }))}
               />
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="YouTube video id"
+                placeholder={isRu ? "YouTube video id" : "YouTube video id"}
                 value={lessonForm.youtube_id}
                 onChange={(e) =>
                   setLessonForm((prev) => ({ ...prev, youtube_id: e.target.value }))
@@ -729,7 +799,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               />
               <textarea
                 className="md:col-span-2 rounded-xl border border-border px-4 py-3"
-                placeholder="Lesson description"
+                placeholder={isRu ? "Описание урока" : "Сабақ сипаттамасы"}
                 value={lessonForm.description}
                 onChange={(e) =>
                   setLessonForm((prev) => ({ ...prev, description: e.target.value }))
@@ -737,7 +807,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               />
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Thumbnail URL"
+                placeholder={isRu ? "Ссылка на обложку" : "Мұқаба сілтемесі"}
                 value={lessonForm.thumbnail}
                 onChange={(e) =>
                   setLessonForm((prev) => ({ ...prev, thumbnail: e.target.value }))
@@ -747,7 +817,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                 type="number"
                 min={1}
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Duration (minutes)"
+                placeholder={isRu ? "Длительность (минуты)" : "Ұзақтығы (минут)"}
                 value={lessonForm.duration_minutes}
                 onChange={(e) =>
                   setLessonForm((prev) => ({
@@ -789,11 +859,11 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     setLessonForm((prev) => ({ ...prev, is_published: e.target.checked }))
                   }
                 />
-                Publish immediately
+                {isRu ? "Опубликовать сразу" : "Бірден жариялау"}
               </label>
               {editingLessonId && (
                 <Button variant="ghost" onClick={resetLessonEditor}>
-                  Cancel editing
+                  {isRu ? "Отменить редактирование" : "Өңдеуді болдырмау"}
                 </Button>
               )}
             </div>
@@ -803,11 +873,11 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-secondary" />
-                <h2>Lesson Test Builder</h2>
+                <h2>{isRu ? "Конструктор теста" : "Тест конструкторы"}</h2>
               </div>
               <Button variant="outline" onClick={addQuestion}>
                 <Plus className="h-4 w-4" />
-                Add Question
+                {isRu ? "Добавить вопрос" : "Сұрақ қосу"}
               </Button>
             </div>
 
@@ -815,17 +885,19 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               {testQuestions.map((question, questionIndex) => (
                 <div key={questionIndex} className="rounded-2xl border border-border p-4">
                   <div className="mb-3 flex items-center justify-between">
-                    <h3>Question #{questionIndex + 1}</h3>
+                    <h3>
+                      {isRu ? `Вопрос #${questionIndex + 1}` : `Сұрақ #${questionIndex + 1}`}
+                    </h3>
                     {testQuestions.length > 1 && (
                       <Button variant="ghost" onClick={() => removeQuestion(questionIndex)}>
-                        Remove
+                        {isRu ? "Удалить" : "Өшіру"}
                       </Button>
                     )}
                   </div>
 
                   <textarea
                     className="mb-3 w-full rounded-xl border border-border px-3 py-2"
-                    placeholder="Question text"
+                    placeholder={isRu ? "Текст вопроса" : "Сұрақ мәтіні"}
                     value={question.question_text}
                     onChange={(e) =>
                       updateQuestion(questionIndex, "question_text", e.target.value)
@@ -833,7 +905,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                   />
                   <textarea
                     className="mb-3 w-full rounded-xl border border-border px-3 py-2"
-                    placeholder="Explanation (optional)"
+                    placeholder={isRu ? "Пояснение (необязательно)" : "Түсіндірме (міндетті емес)"}
                     value={question.explanation}
                     onChange={(e) =>
                       updateQuestion(questionIndex, "explanation", e.target.value)
@@ -845,7 +917,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                       <div key={optionIndex} className="flex items-center gap-2">
                         <input
                           className="flex-1 rounded-xl border border-border px-3 py-2"
-                          placeholder={`Option ${optionIndex + 1}`}
+                          placeholder={
+                            isRu ? `Вариант ${optionIndex + 1}` : `Нұсқа ${optionIndex + 1}`
+                          }
                           value={option.option_text}
                           onChange={(e) =>
                             updateOption(
@@ -864,7 +938,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                           }`}
                           onClick={() => setCorrectOption(questionIndex, optionIndex)}
                         >
-                          Correct
+                          {isRu ? "Верный" : "Дұрыс"}
                         </button>
                       </div>
                     ))}
@@ -876,10 +950,10 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
 
           <Card className="rounded-[28px]">
             <div className="mb-4 flex items-center justify-between">
-              <h2>Vocabulary For This Lesson</h2>
+              <h2>{isRu ? "Словарь этого урока" : "Осы сабақтың сөздігі"}</h2>
               <Button variant="outline" onClick={addLessonWord}>
                 <Plus className="h-4 w-4" />
-                Add Word
+                {isRu ? "Добавить слово" : "Сөз қосу"}
               </Button>
             </div>
 
@@ -887,10 +961,10 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               {lessonWords.map((word, wordIndex) => (
                 <div key={wordIndex} className="rounded-2xl border border-border p-4">
                   <div className="mb-3 flex items-center justify-between">
-                    <h3>Word #{wordIndex + 1}</h3>
+                    <h3>{isRu ? `Слово #${wordIndex + 1}` : `Сөз #${wordIndex + 1}`}</h3>
                     {lessonWords.length > 1 && (
                       <Button variant="ghost" onClick={() => removeLessonWord(wordIndex)}>
-                        Remove
+                        {isRu ? "Удалить" : "Өшіру"}
                       </Button>
                     )}
                   </div>
@@ -898,13 +972,13 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                   <div className="grid gap-3 md:grid-cols-2">
                     <input
                       className="rounded-xl border border-border px-3 py-2"
-                      placeholder="Word"
+                      placeholder={isRu ? "Слово" : "Сөз"}
                       value={word.word}
                       onChange={(e) => updateLessonWord(wordIndex, "word", e.target.value)}
                     />
                     <input
                       className="rounded-xl border border-border px-3 py-2"
-                      placeholder="Translation"
+                      placeholder={isRu ? "Перевод" : "Аударма"}
                       value={word.translation}
                       onChange={(e) =>
                         updateLessonWord(wordIndex, "translation", e.target.value)
@@ -912,7 +986,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     />
                     <input
                       className="rounded-xl border border-border px-3 py-2"
-                      placeholder="Pronunciation"
+                      placeholder={isRu ? "Произношение" : "Айтылуы"}
                       value={word.pronunciation}
                       onChange={(e) =>
                         updateLessonWord(wordIndex, "pronunciation", e.target.value)
@@ -920,7 +994,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     />
                     <input
                       className="rounded-xl border border-border px-3 py-2"
-                      placeholder="Category"
+                      placeholder={isRu ? "Категория" : "Санат"}
                       value={word.category}
                       onChange={(e) =>
                         updateLessonWord(wordIndex, "category", e.target.value)
@@ -945,7 +1019,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     </select>
                     <input
                       className="md:col-span-2 rounded-xl border border-border px-3 py-2"
-                      placeholder="Example sentence"
+                      placeholder={isRu ? "Пример предложения" : "Мысал сөйлем"}
                       value={word.example}
                       onChange={(e) => updateLessonWord(wordIndex, "example", e.target.value)}
                     />
@@ -958,17 +1032,23 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
           <div className="flex justify-end">
             <Button size="lg" onClick={submitLessonTemplate} disabled={loading}>
               {loading
-                ? "Saving..."
+                ? isRu
+                  ? "Сохраняем..."
+                  : "Сақталып жатыр..."
                 : editingLessonId
-                ? "Update Lesson Template"
-                : "Save Lesson Template"}
+                ? isRu
+                  ? "Обновить шаблон урока"
+                  : "Сабақ шаблонын жаңарту"
+                : isRu
+                  ? "Сохранить шаблон урока"
+                  : "Сабақ шаблонын сақтау"}
             </Button>
           </div>
 
           <Card className="rounded-[28px] border-primary/20 bg-gradient-to-br from-card to-primary/5">
             <div className="mb-4 flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
-              <h2>Live Preview</h2>
+              <h2>{isRu ? "Предпросмотр" : "Алдын ала көрініс"}</h2>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
@@ -998,7 +1078,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
 
               <div className="space-y-4">
                 <div className="rounded-2xl border border-border bg-card p-4">
-                  <p className="mb-2 text-xs uppercase text-muted-foreground">Final Test Preview</p>
+                  <p className="mb-2 text-xs uppercase text-muted-foreground">
+                    {isRu ? "Предпросмотр теста" : "Тесттің алдын ала көрінісі"}
+                  </p>
                   {previewMainQuestion ? (
                     <>
                       <p className="mb-3 font-medium">{previewMainQuestion.question_text}</p>
@@ -1022,30 +1104,38 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Add at least one question to see test preview.
+                      {isRu
+                        ? "Добавьте хотя бы один вопрос, чтобы увидеть тест."
+                        : "Тестті көру үшін кемінде бір сұрақ қосыңыз."}
                     </p>
                   )}
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card p-4">
-                  <p className="mb-2 text-xs uppercase text-muted-foreground">Vocabulary Preview</p>
+                  <p className="mb-2 text-xs uppercase text-muted-foreground">
+                    {isRu ? "Предпросмотр словаря" : "Сөздік алдын ала көрінісі"}
+                  </p>
                   {previewLessonWords.length > 0 ? (
                     <div className="space-y-2">
                       {previewLessonWords.map((word, index) => (
                         <div key={`${word.word}-${index}`} className="rounded-xl border border-border p-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">{word.word || "Word"}</span>
+                            <span className="font-medium">
+                              {word.word || (isRu ? "Слово" : "Сөз")}
+                            </span>
                             <span className="text-xs text-muted-foreground">{word.level}</span>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {word.translation || "Translation"}
+                            {word.translation || (isRu ? "Перевод" : "Аударма")}
                           </p>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Add lesson words to see vocabulary cards preview.
+                      {isRu
+                        ? "Добавьте слова урока, чтобы увидеть карточки словаря."
+                        : "Сөздік карточкаларын көру үшін сабақ сөздерін қосыңыз."}
                     </p>
                   )}
                 </div>
@@ -1054,7 +1144,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
           </Card>
 
           <Card className="rounded-[28px]">
-            <h2 className="mb-4">Created Lessons</h2>
+            <h2 className="mb-4">{isRu ? "Созданные уроки" : "Жасалған сабақтар"}</h2>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {lessons.map((lesson) => (
                 <div key={lesson.id} className="rounded-2xl border border-border p-4">
@@ -1068,7 +1158,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                   <div className="mt-3 flex items-center gap-2">
                     <Button variant="ghost" onClick={() => void startEditLesson(lesson.id)}>
                       <Pencil className="h-4 w-4" />
-                      Edit
+                      {isRu ? "Изменить" : "Өңдеу"}
                     </Button>
                     <Button
                       variant="ghost"
@@ -1076,7 +1166,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                       className="text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Delete
+                      {isRu ? "Удалить" : "Өшіру"}
                     </Button>
                   </div>
                 </div>
@@ -1091,19 +1181,23 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
           <Card className="rounded-[28px]">
             <h2 className="mb-4">
               {editingWordId
-                ? `Edit Dictionary Word #${editingWordId}`
-                : "Add Word To Global Dictionary"}
+                ? isRu
+                  ? `Редактирование слова #${editingWordId}`
+                  : `Сөзді өңдеу #${editingWordId}`
+                : isRu
+                  ? "Добавить слово в общий словарь"
+                  : "Жалпы сөздікке сөз қосу"}
             </h2>
             <div className="grid gap-3 md:grid-cols-2">
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Word"
+                placeholder={isRu ? "Слово" : "Сөз"}
                 value={wordForm.word}
                 onChange={(e) => setWordForm((prev) => ({ ...prev, word: e.target.value }))}
               />
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Translation"
+                placeholder={isRu ? "Перевод" : "Аударма"}
                 value={wordForm.translation}
                 onChange={(e) =>
                   setWordForm((prev) => ({ ...prev, translation: e.target.value }))
@@ -1111,7 +1205,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               />
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Pronunciation"
+                placeholder={isRu ? "Произношение" : "Айтылуы"}
                 value={wordForm.pronunciation}
                 onChange={(e) =>
                   setWordForm((prev) => ({ ...prev, pronunciation: e.target.value }))
@@ -1119,7 +1213,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               />
               <input
                 className="rounded-xl border border-border px-4 py-3"
-                placeholder="Category"
+                placeholder={isRu ? "Категория" : "Санат"}
                 value={wordForm.category}
                 onChange={(e) =>
                   setWordForm((prev) => ({ ...prev, category: e.target.value }))
@@ -1127,7 +1221,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
               />
               <input
                 className="md:col-span-2 rounded-xl border border-border px-4 py-3"
-                placeholder="Example sentence"
+                placeholder={isRu ? "Пример предложения" : "Мысал сөйлем"}
                 value={wordForm.example}
                 onChange={(e) => setWordForm((prev) => ({ ...prev, example: e.target.value }))}
               />
@@ -1147,7 +1241,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                 value={wordForm.lesson}
                 onChange={(e) => setWordForm((prev) => ({ ...prev, lesson: e.target.value }))}
               >
-                <option value="">No lesson link</option>
+                <option value="">{isRu ? "Без привязки к уроку" : "Сабаққа байланыссыз"}</option>
                 {lessons.map((lesson) => (
                   <option key={lesson.id} value={lesson.id}>
                     {lesson.title}
@@ -1157,11 +1251,17 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
             </div>
             <div className="mt-4 flex justify-end">
               <Button onClick={submitDictionaryWord} disabled={loading}>
-                {editingWordId ? "Update Word" : "Add Word"}
+                {editingWordId
+                  ? isRu
+                    ? "Обновить слово"
+                    : "Сөзді жаңарту"
+                  : isRu
+                    ? "Добавить слово"
+                    : "Сөз қосу"}
               </Button>
               {editingWordId && (
                 <Button variant="ghost" onClick={resetWordEditor}>
-                  Cancel
+                  {isRu ? "Отмена" : "Болдырмау"}
                 </Button>
               )}
             </div>
@@ -1170,39 +1270,51 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
           <Card className="rounded-[28px] border-secondary/20 bg-gradient-to-br from-card to-secondary/10">
             <div className="mb-4 flex items-center gap-2">
               <BookOpenCheck className="h-5 w-5 text-secondary" />
-              <h2>Dictionary Live Preview</h2>
+              <h2>{isRu ? "Предпросмотр словаря" : "Сөздік алдын ала көрінісі"}</h2>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-border bg-card p-4">
-                <h3 className="mb-1">{wordForm.word || "Word"}</h3>
+                <h3 className="mb-1">{wordForm.word || (isRu ? "Слово" : "Сөз")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {wordForm.pronunciation || "Pronunciation"}
+                  {wordForm.pronunciation || (isRu ? "Произношение" : "Айтылуы")}
                 </p>
-                <p className="mt-2">{wordForm.translation || "Translation"}</p>
+                <p className="mt-2">{wordForm.translation || (isRu ? "Перевод" : "Аударма")}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {wordForm.example || "Example sentence will appear here."}
+                  {wordForm.example ||
+                    (isRu
+                      ? "Здесь появится пример предложения."
+                      : "Мұнда мысал сөйлем көрінеді.")}
                 </p>
                 <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{wordForm.category || "General"}</span>
+                  <span>{wordForm.category || (isRu ? "Общее" : "Жалпы")}</span>
                   <span>{wordForm.level}</span>
                 </div>
               </div>
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="mb-2 text-xs uppercase text-muted-foreground">Linked lesson</p>
+                <p className="mb-2 text-xs uppercase text-muted-foreground">
+                  {isRu ? "Привязанный урок" : "Байланысқан сабақ"}
+                </p>
                 <p className="font-medium">
-                  {previewDictionaryLinkedLesson?.title || "No lesson selected"}
+                  {previewDictionaryLinkedLesson?.title ||
+                    (isRu ? "Урок не выбран" : "Сабақ таңдалмаған")}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {previewDictionaryLinkedLesson
-                    ? `${previewDictionaryLinkedLesson.level} - ${previewDictionaryLinkedLesson.category}`
-                    : "This word will be global in dictionary."}
+                    ? `${previewDictionaryLinkedLesson.level} - ${translateCategory(
+                        previewDictionaryLinkedLesson.category
+                      )}`
+                    : isRu
+                      ? "Слово будет доступно в общем словаре."
+                      : "Бұл сөз жалпы сөздікте қолжетімді болады."}
                 </p>
               </div>
             </div>
           </Card>
 
           <Card className="rounded-[28px]">
-            <h2 className="mb-4">Dictionary Preview ({dictionary.length})</h2>
+            <h2 className="mb-4">
+              {(isRu ? "Словарь" : "Сөздік") + ` (${dictionary.length})`}
+            </h2>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {dictionary.slice(0, 60).map((item) => (
                 <div key={item.id} className="rounded-2xl border border-border p-4">
@@ -1212,12 +1324,13 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     <p className="mt-1 text-xs text-muted-foreground">{item.example}</p>
                   )}
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {item.category || "General"} - {item.level || "-"}
+                    {(item.category ? translateCategory(item.category) : isRu ? "Общее" : "Жалпы")} -{" "}
+                    {item.level || "-"}
                   </p>
                   <div className="mt-3 flex items-center gap-2">
                     <Button variant="ghost" onClick={() => startEditWord(item)}>
                       <Pencil className="h-4 w-4" />
-                      Edit
+                      {isRu ? "Изменить" : "Өңдеу"}
                     </Button>
                     <Button
                       variant="ghost"
@@ -1225,7 +1338,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                       onClick={() => void deleteWord(item.id)}
                     >
                       <Trash2 className="h-4 w-4" />
-                      Delete
+                      {isRu ? "Удалить" : "Өшіру"}
                     </Button>
                   </div>
                 </div>
@@ -1238,17 +1351,17 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
       {activeTab === "students" && (
         <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <Card className="rounded-[28px]">
-            <h2 className="mb-4">Students Monitoring</h2>
+            <h2 className="mb-4">{isRu ? "Мониторинг учеников" : "Оқушылар мониторингі"}</h2>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="px-3 py-3">Student</th>
-                    <th className="px-3 py-3">Completed</th>
-                    <th className="px-3 py-3">In Progress</th>
-                    <th className="px-3 py-3">Average</th>
-                    <th className="px-3 py-3">Latest Test</th>
-                    <th className="px-3 py-3">Details</th>
+                    <th className="px-3 py-3">{isRu ? "Ученик" : "Оқушы"}</th>
+                    <th className="px-3 py-3">{isRu ? "Завершено" : "Аяқталды"}</th>
+                    <th className="px-3 py-3">{isRu ? "В процессе" : "Орындалуда"}</th>
+                    <th className="px-3 py-3">{isRu ? "Среднее" : "Орташа"}</th>
+                    <th className="px-3 py-3">{isRu ? "Последний тест" : "Соңғы тест"}</th>
+                    <th className="px-3 py-3">{isRu ? "Детали" : "Толығырақ"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1277,7 +1390,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                                 {student.latest_test_attempt.lesson_title}
                               </span>
                             ) : (
-                              <span className="text-muted-foreground">No tests yet</span>
+                              <span className="text-muted-foreground">
+                                {isRu ? "Тестов пока нет" : "Тесттер әлі жоқ"}
+                              </span>
                             )}
                           </td>
                           <td className="px-3 py-3">
@@ -1289,7 +1404,13 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                                 )
                               }
                             >
-                              {expanded ? "Hide" : "View"}
+                              {expanded
+                                ? isRu
+                                  ? "Скрыть"
+                                  : "Жасыру"
+                                : isRu
+                                  ? "Открыть"
+                                  : "Ашу"}
                             </Button>
                           </td>
                         </tr>
@@ -1298,7 +1419,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                             <td className="px-3 py-4" colSpan={6}>
                               {student.lessons.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                  No lesson progress yet.
+                                  {isRu
+                                    ? "По урокам пока нет прогресса."
+                                    : "Сабақтар бойынша прогресс әлі жоқ."}
                                 </p>
                               ) : (
                                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1309,7 +1432,8 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                                     >
                                       <p className="mb-2 font-medium">{lesson.lesson_title}</p>
                                       <p className="mb-2 text-xs text-muted-foreground">
-                                        Updated: {formatDateTime(lesson.updated_at)}
+                                        {(isRu ? "Обновлено" : "Жаңартылды")}:{" "}
+                                        {formatDateTime(lesson.updated_at)}
                                       </p>
                                       <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-muted">
                                         <div
@@ -1320,8 +1444,12 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                                         />
                                       </div>
                                       <div className="flex items-center justify-between text-xs">
-                                        <span>{lesson.progress}% progress</span>
-                                        <span>Test: {lesson.test_score}%</span>
+                                        <span>
+                                          {lesson.progress}% {isRu ? "прогресс" : "прогресс"}
+                                        </span>
+                                        <span>
+                                          {isRu ? "Тест" : "Тест"}: {lesson.test_score}%
+                                        </span>
                                       </div>
                                     </div>
                                   ))}
@@ -1346,7 +1474,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-primary" />
-                <h2>Lesson Test Analytics</h2>
+                <h2>{isRu ? "Аналитика тестов" : "Тест аналитикасы"}</h2>
               </div>
               <div className="flex items-center gap-2">
                 <select
@@ -1354,7 +1482,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                   value={analyticsLessonFilter}
                   onChange={(e) => setAnalyticsLessonFilter(e.target.value)}
                 >
-                  <option value="all">All lessons</option>
+                  <option value="all">{isRu ? "Все уроки" : "Барлық сабақ"}</option>
                   {lessons.map((lesson) => (
                     <option key={lesson.id} value={lesson.id}>
                       {lesson.title}
@@ -1362,7 +1490,7 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                   ))}
                 </select>
                 <Button onClick={() => void refreshAnalytics()} disabled={loading}>
-                  Refresh
+                  {isRu ? "Обновить" : "Жаңарту"}
                 </Button>
               </div>
             </div>
@@ -1370,35 +1498,43 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
             {analytics ? (
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-2xl border border-border p-4 text-center">
-                  <p className="text-xs text-muted-foreground">Total Attempts</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isRu ? "Всего попыток" : "Барлық талпыныс"}
+                  </p>
                   <p className="text-2xl font-semibold">{analytics.summary.total_attempts}</p>
                 </div>
                 <div className="rounded-2xl border border-border p-4 text-center">
-                  <p className="text-xs text-muted-foreground">Average Score</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isRu ? "Средний балл" : "Орташа балл"}
+                  </p>
                   <p className="text-2xl font-semibold">{analytics.summary.average_score}%</p>
                 </div>
                 <div className="rounded-2xl border border-border p-4 text-center">
-                  <p className="text-xs text-muted-foreground">Pass Rate</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isRu ? "Процент прохождения" : "Өту пайызы"}
+                  </p>
                   <p className="text-2xl font-semibold">{analytics.summary.pass_rate}%</p>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No analytics data yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {isRu ? "Аналитика пока пуста." : "Аналитика әзірше бос."}
+              </p>
             )}
           </Card>
 
           <Card className="rounded-[28px]">
-            <h2 className="mb-4">Recent Test Attempts</h2>
+            <h2 className="mb-4">{isRu ? "Последние попытки" : "Соңғы талпыныстар"}</h2>
             {analytics && analytics.recent_attempts.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="border-b border-border text-left">
-                      <th className="px-3 py-3">Student</th>
-                      <th className="px-3 py-3">Lesson</th>
-                      <th className="px-3 py-3">Score</th>
-                      <th className="px-3 py-3">Status</th>
-                      <th className="px-3 py-3">Date</th>
+                      <th className="px-3 py-3">{isRu ? "Ученик" : "Оқушы"}</th>
+                      <th className="px-3 py-3">{isRu ? "Урок" : "Сабақ"}</th>
+                      <th className="px-3 py-3">{isRu ? "Баллы" : "Балл"}</th>
+                      <th className="px-3 py-3">{isRu ? "Статус" : "Күйі"}</th>
+                      <th className="px-3 py-3">{isRu ? "Дата" : "Күні"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1415,7 +1551,13 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                                 : "bg-destructive/15 text-destructive"
                             }`}
                           >
-                            {attempt.passed ? "Passed" : "Failed"}
+                            {attempt.passed
+                              ? isRu
+                                ? "Пройден"
+                                : "Өтті"
+                              : isRu
+                                ? "Не пройден"
+                                : "Өтпеді"}
                           </span>
                         </td>
                         <td className="px-3 py-3">{formatDateTime(attempt.submitted_at)}</td>
@@ -1425,12 +1567,14 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No attempts yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {isRu ? "Попыток пока нет." : "Талпыныстар әлі жоқ."}
+              </p>
             )}
           </Card>
 
           <Card className="rounded-[28px]">
-            <h2 className="mb-4">Question Accuracy</h2>
+            <h2 className="mb-4">{isRu ? "Точность вопросов" : "Сұрақ дәлдігі"}</h2>
             {analytics && analytics.question_breakdown.length > 0 ? (
               <div className="grid gap-3 md:grid-cols-2">
                 {analytics.question_breakdown.slice(0, 12).map((question) => (
@@ -1440,20 +1584,25 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                       Q{question.order}: {question.question_text}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Attempts: {question.attempts} - Correct: {question.correct_rate}%
+                      {isRu ? "Попыток" : "Талпыныс"}: {question.attempts} -{" "}
+                      {isRu ? "Верно" : "Дұрыс"}: {question.correct_rate}%
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Question analytics will appear after attempts.</p>
+              <p className="text-sm text-muted-foreground">
+                {isRu
+                  ? "Аналитика вопросов появится после первых попыток."
+                  : "Сұрақ аналитикасы алғашқы талпыныстардан кейін көрінеді."}
+              </p>
             )}
           </Card>
 
           <Card className="rounded-[28px]">
             <div className="mb-4 flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-secondary" />
-              <h2>Audit Log</h2>
+              <h2>{isRu ? "Журнал действий" : "Әрекет журналы"}</h2>
             </div>
             {auditLogs.length > 0 ? (
               <div className="space-y-2">
@@ -1463,7 +1612,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                     className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border p-3 text-sm"
                   >
                     <div>
-                      <span className="font-medium">{logItem.username || "system"}</span>{" "}
+                      <span className="font-medium">
+                        {logItem.username || (isRu ? "система" : "жүйе")}
+                      </span>{" "}
                       <span className="text-muted-foreground">{logItem.action}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -1473,7 +1624,9 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No audit events yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {isRu ? "Событий пока нет." : "Оқиғалар әлі жоқ."}
+              </p>
             )}
           </Card>
         </motion.section>
@@ -1481,4 +1634,3 @@ export const ContentStudioPage: React.FC<ContentStudioPageProps> = ({ onNavigate
     </div>
   );
 };
-

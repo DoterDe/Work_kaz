@@ -13,7 +13,7 @@ except ImportError:  # pragma: no cover - optional in local dev
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 if load_dotenv:
-    load_dotenv(BASE_DIR / ".env")
+    load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -226,7 +226,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = os.getenv("DJANGO_LANGUAGE_CODE", "ru-ru")
 TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True

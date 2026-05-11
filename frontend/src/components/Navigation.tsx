@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
+import { useAppPreferences } from "../context/AppPreferencesContext";
+import { AppControls } from "./AppControls";
 import { Button } from "./ui/Button";
 
 interface NavigationProps {
@@ -22,17 +24,45 @@ interface NavigationProps {
 
 export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { language } = useAppPreferences();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const copy =
+    language === "ru"
+      ? {
+          brandSubtitle: "Живые уроки и практический казахский",
+          home: "Главная",
+          catalog: "Каталог",
+          vocabulary: "Словарь",
+          dashboard: "Кабинет",
+          studio: "Студия",
+          login: "Войти",
+          register: "Регистрация",
+          account: "Профиль",
+          logout: "Выйти",
+        }
+      : {
+          brandSubtitle: "Тірі сабақтар және практикалық қазақ тілі",
+          home: "Басты бет",
+          catalog: "Каталог",
+          vocabulary: "Сөздік",
+          dashboard: "Кабинет",
+          studio: "Студия",
+          login: "Кіру",
+          register: "Тіркелу",
+          account: "Профиль",
+          logout: "Шығу",
+        };
+
   const items = [
-    { label: "Home", page: "home", icon: Home },
+    { label: copy.home, page: "home", icon: Home },
     ...(isAuthenticated
       ? [
-          { label: "Catalog", page: "catalog", icon: Library },
-          { label: "Vocabulary", page: "vocabulary", icon: BookOpenCheck },
-          { label: "Dashboard", page: "dashboard", icon: LayoutDashboard },
+          { label: copy.catalog, page: "catalog", icon: Library },
+          { label: copy.vocabulary, page: "vocabulary", icon: BookOpenCheck },
+          { label: copy.dashboard, page: "dashboard", icon: LayoutDashboard },
           ...(user?.is_content_manager
-            ? [{ label: "Studio", page: "studio", icon: Sparkles }]
+            ? [{ label: copy.studio, page: "studio", icon: Sparkles }]
             : []),
         ]
       : []),
@@ -56,7 +86,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
           onClick={() => onNavigate("home")}
         >
           <div className="text-lg font-semibold">Qazaq Video Learn</div>
-          <div className="text-xs text-muted-foreground">Learn with real lessons</div>
+          <div className="text-xs text-muted-foreground">{copy.brandSubtitle}</div>
         </button>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -79,23 +109,25 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
 
           {!isAuthenticated ? (
             <>
+              <AppControls />
               <Button variant="ghost" onClick={() => onNavigate("login")}>
-                Login
+                {copy.login}
               </Button>
-              <Button onClick={() => onNavigate("register")}>Register</Button>
+              <Button onClick={() => onNavigate("register")}>{copy.register}</Button>
             </>
           ) : (
             <>
+              <AppControls />
               <button
                 className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-muted"
                 onClick={() => onNavigate("dashboard")}
               >
                 <User className="h-4 w-4" />
-                {user?.username || "Account"}
+                {user?.username || copy.account}
               </button>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
-                Logout
+                {copy.logout}
               </Button>
             </>
           )}
@@ -118,6 +150,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
             className="border-t border-border bg-card md:hidden"
           >
             <div className="space-y-2 p-4">
+              <div className="flex justify-end">
+                <AppControls />
+              </div>
               {items.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -135,19 +170,19 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
               {!isAuthenticated ? (
                 <>
                   <Button className="w-full" variant="ghost" onClick={() => closeAndNavigate("login")}>
-                    Login
+                    {copy.login}
                   </Button>
                   <Button className="w-full" onClick={() => closeAndNavigate("register")}>
-                    Register
+                    {copy.register}
                   </Button>
                 </>
               ) : (
                 <>
                   <Button className="w-full" variant="ghost" onClick={() => closeAndNavigate("dashboard")}>
-                    Dashboard
+                    {copy.dashboard}
                   </Button>
                   <Button className="w-full" variant="outline" onClick={handleLogout}>
-                    Logout
+                    {copy.logout}
                   </Button>
                 </>
               )}

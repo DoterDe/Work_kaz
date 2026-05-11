@@ -3,6 +3,7 @@ import { BookOpen, ChartBar, CheckCircle, Clock } from "lucide-react";
 
 import api from "../api/axios";
 import { useAuth } from "../auth/AuthContext";
+import { useAppPreferences } from "../context/AppPreferencesContext";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { LevelBadge } from "../components/ui/LevelBadge";
@@ -39,10 +40,50 @@ interface LessonsMetaResponse {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { logout } = useAuth();
+  const { language, formatMinutes } = useAppPreferences();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [catalogMeta, setCatalogMeta] = useState<LessonsMetaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const copy =
+    language === "ru"
+      ? {
+          loading: "Загружаем кабинет...",
+          empty: "Кабинет временно недоступен",
+          fetchError: "Не удалось загрузить кабинет. Попробуйте войти снова.",
+          welcome: "С возвращением",
+          catalogRating: "Средний рейтинг каталога",
+          goCatalog: "К каталогу",
+          studio: "Студия",
+          logout: "Выйти",
+          completed: "Завершено",
+          inProgress: "В процессе",
+          averageProgress: "Средний прогресс",
+          publishedLessons: "Опубликованные уроки",
+          recentLessons: "Недавно активные уроки",
+          viewAll: "Смотреть всё",
+          noActivity: "Активности по урокам пока нет. Начните с каталога.",
+          browseLessons: "Открыть каталог",
+        }
+      : {
+          loading: "Кабинет жүктеліп жатыр...",
+          empty: "Кабинет уақытша қолжетімсіз",
+          fetchError: "Кабинетті жүктеу мүмкін болмады. Қайта кіріп көріңіз.",
+          welcome: "Қайта оралғаныңызға қуаныштымыз",
+          catalogRating: "Каталогтың орташа рейтингі",
+          goCatalog: "Каталогқа өту",
+          studio: "Студия",
+          logout: "Шығу",
+          completed: "Аяқталды",
+          inProgress: "Орындалуда",
+          averageProgress: "Орташа прогресс",
+          publishedLessons: "Жарияланған сабақтар",
+          recentLessons: "Жақында белсенді болған сабақтар",
+          viewAll: "Барлығын көру",
+          noActivity: "Сабақ белсенділігі әлі жоқ. Каталогтан бастаңыз.",
+          browseLessons: "Каталогты ашу",
+        };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,7 +98,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         setDashboard(dashboardResponse.data);
         setCatalogMeta(metaResponse.data);
       } catch (error) {
-        setError(extractApiErrorMessage(error, "Failed to load dashboard data. Please log in again."));
+        setError(extractApiErrorMessage(error, copy.fetchError));
       } finally {
         setLoading(false);
       }
@@ -72,14 +113,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   if (loading) {
-    return <p className="py-20 text-center text-muted-foreground">Loading dashboard...</p>;
+    return <p className="py-20 text-center text-muted-foreground">{copy.loading}</p>;
   }
 
   if (!dashboard) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <Card className="rounded-[24px] border-destructive/20 bg-destructive/10 text-destructive">
-          {error || "Dashboard is unavailable"}
+          {error || copy.empty}
         </Card>
       </div>
     );
@@ -88,25 +129,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const statCards = [
     {
       icon: CheckCircle,
-      label: "Completed",
+      label: copy.completed,
       value: dashboard.stats.completed_lessons,
       color: "text-secondary",
     },
     {
       icon: Clock,
-      label: "In Progress",
+      label: copy.inProgress,
       value: dashboard.stats.in_progress_lessons,
       color: "text-primary",
     },
     {
       icon: ChartBar,
-      label: "Average Progress",
+      label: copy.averageProgress,
       value: `${dashboard.stats.average_progress}%`,
       color: "text-accent-foreground",
     },
     {
       icon: BookOpen,
-      label: "Published Lessons",
+      label: copy.publishedLessons,
       value: catalogMeta?.total_lessons ?? 0,
       color: "text-primary",
     },
@@ -117,23 +158,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <section className="mb-8 rounded-[28px] border border-border bg-gradient-to-br from-card to-primary/5 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="mb-2">Welcome back, {dashboard.username}</h1>
+            <h1 className="mb-2">{copy.welcome}, {dashboard.username}</h1>
             <p className="text-muted-foreground">{dashboard.email}</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Catalog rating: {catalogMeta?.average_rating?.toFixed(1) ?? "0.0"}
+              {copy.catalogRating}: {catalogMeta?.average_rating?.toFixed(1) ?? "0.0"}
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onNavigate("catalog")}>
-              Go to Catalog
+              {copy.goCatalog}
             </Button>
             {dashboard.is_content_manager && (
               <Button variant="outline" onClick={() => onNavigate("studio")}>
-                Studio
+                {copy.studio}
               </Button>
             )}
             <Button variant="outline" onClick={handleLogout}>
-              Logout
+              {copy.logout}
             </Button>
           </div>
         </div>
@@ -156,18 +197,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2>Recently Active Lessons</h2>
+          <h2>{copy.recentLessons}</h2>
           <Button variant="ghost" onClick={() => onNavigate("catalog")}>
-            View all
+            {copy.viewAll}
           </Button>
         </div>
 
         {dashboard.recent_lessons.length === 0 ? (
           <Card className="rounded-[24px] py-10 text-center">
-            <p className="mb-3 text-muted-foreground">
-              No lesson activity yet. Start from the catalog.
-            </p>
-            <Button onClick={() => onNavigate("catalog")}>Browse Lessons</Button>
+            <p className="mb-3 text-muted-foreground">{copy.noActivity}</p>
+            <Button onClick={() => onNavigate("catalog")}>{copy.browseLessons}</Button>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -183,7 +222,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   <LevelBadge level={lesson.level} size="sm" />
                 </div>
                 <p className="mb-3 text-sm text-muted-foreground">
-                  {lesson.duration_minutes} min
+                  {formatMinutes(lesson.duration_minutes)}
                 </p>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
