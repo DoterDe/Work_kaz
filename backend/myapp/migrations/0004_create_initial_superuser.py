@@ -3,7 +3,6 @@ from django.db import migrations
 def create_superuser(apps, schema_editor):
     User = apps.get_model('auth', 'User')
     
-    # Проверяем, не существует ли уже пользователь
     if not User.objects.filter(username='admin').exists():
         User.objects.create_superuser(
             username='admin',
@@ -16,7 +15,7 @@ def create_superuser(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('myapp', '0003_auditlog_vocabularyquizattempt'),  # ← ИСПРАВЛЕНО!
+        ('myapp', '0003_auditlog_vocabularyquizattempt'),  # ← ПРОВЕРЬТЕ ЭТО
     ]
 
     operations = [
