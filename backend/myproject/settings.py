@@ -265,3 +265,10 @@ LOGGING = {
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@site.com', 'Aboka2008')
+    print("✅ Суперпользователь создан!")
+else:
+    print("ℹ️ Суперпользователь уже существует")
