@@ -23,7 +23,11 @@ export function LessonCard({
   onClick 
 }: LessonCardProps) {
   return (
-    <Card hover className="overflow-hidden p-0 cursor-pointer" onClick={onClick}>
+    <Card
+      hover
+      className="overflow-hidden p-0 cursor-pointer"
+      onClick={onClick} // 🔹 Вся карточка кликабельна
+    >
       <div className="relative aspect-video bg-muted overflow-hidden">
         <ImageWithFallback 
           src={thumbnail} 
@@ -55,7 +59,13 @@ export function LessonCard({
             <span>{duration}</span>
           </div>
         </div>
-        <Button variant="primary" size="sm" className="w-full">
+        {/* 🔹 Кнопка декоративная, клик идёт на всю карточку */}
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full pointer-events-none"
+          onClick={onClick}
+        >
           {progress > 0 ? 'Continue' : 'Start Lesson'}
         </Button>
       </div>

@@ -1,16 +1,16 @@
 import React from 'react';
 
-interface CardProps {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  className?: string;
   hover?: boolean;
 }
 
-export function Card({ children, className = '', hover = false }: CardProps) {
+export function Card({ children, className = '', hover = false, ...props }: CardProps) {
   return (
     <div 
-      className={`bg-card rounded-[24px] shadow-sm border border-border p-6 ${
-        hover ? 'transition-all duration-200 hover:shadow-lg hover:-translate-y-1' : ''
+      {...props}
+      className={`card-surface bg-card rounded-[24px] shadow-sm border border-border p-6 ${
+        hover ? 'card-hoverable' : ''
       } ${className}`}
     >
       {children}

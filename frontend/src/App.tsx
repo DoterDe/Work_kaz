@@ -1,55 +1,183 @@
-import React, { useState, useEffect } from 'react';
-import { Navigation } from './components/Navigation';
-import { Footer } from './components/Footer';
-import { MobileNav } from './components/MobileNav';
+import React, { useEffect, useState } from "react";
+import { Navigation } from "./components/Navigation";
+import { Footer } from "./components/Footer";
+import { MobileNav } from "./components/MobileNav";
 
-import { HomePage } from './pages/HomePage';
-import { VideoLessonPage } from './components/VideoLessonPage';
-import { LessonsCatalog } from './components/LessonsCatalog';
-import { Dashboard } from './pages/Dashboard';
-import { VocabularyPage } from './components/VocabularyPage';
-import { UIKitShowcase } from './components/UIKitShowcase';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
+import { HomePage } from "./components/HomePage";
+import { VideoLessonPage } from "./components/VideoLessonPage";
+import { LessonsCatalog } from "./components/LessonsCatalog";
+import { Dashboard } from "./pages/Dashboard";
+import { VocabularyPage } from "./components/VocabularyPage";
+import { UIKitShowcase } from "./components/UIKitShowcase";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { ContentStudioPage } from "./pages/ContentStudioPage";
 
-import api from './api/axios';
+import { useAuth } from "./auth/AuthContext";
+
+export interface Lesson {
+  id: number;
+  title: string;
+  description?: string;
+  level: "A1" | "A2" | "B1" | "B2";
+  duration_minutes?: number;
+  duration?: number;
+  category?: string;
+  thumbnail?: string;
+  rating?: number;
+  youtube_id?: string;
+  progress?: number;
+}
+
+type PageId =
+  | "home"
+  | "catalog"
+  | "lesson"
+  | "vocabulary"
+  | "dashboard"
+  | "login"
+  | "register"
+  | "uikit"
+  | "studio";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [backendMessage, setBackendMessage] = useState<string>('Загрузка...');
+  const { isAuthenticated, user } = useAuth();
 
-  const handleNavigate = (page: string) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const [currentPage, setCurrentPage] = useState<PageId>("home");
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [redirectAfterLogin, setRedirectAfterLogin] = useState<string | null>(null);
+  const [visitedPages, setVisitedPages] = useState<PageId[]>(["home"]);
+  const [scrollPositions, setScrollPositions] = useState<Record<string, number>>({
+    home: 0,
+  });
+
+  const handleNavigate = (page: string, lesson?: Lesson) => {
+    const targetPage = page as PageId;
+    const currentScrollY = window.scrollY;
+    setScrollPositions((prev) => ({
+      ...prev,
+      [currentPage]: currentScrollY,
+      ...(targetPage === "lesson" && lesson ? { lesson: 0 } : {}),
+    }));
+    if (lesson) setSelectedLesson(lesson);
+    setCurrentPage(targetPage);
+    setVisitedPages((prev) => (prev.includes(targetPage) ? prev : [...prev, targetPage]));
   };
 
   useEffect(() => {
-    api.get('test/')
-      .then(res => setBackendMessage(res.data.message))
-      .catch(() => setBackendMessage('Ошибка подключения к Django'));
-  }, []);
+    const nextScrollTop = scrollPositions[currentPage] ?? 0;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: nextScrollTop,
+        behavior: "auto",
+      });
+    });
+  }, [currentPage, scrollPositions]);
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <HomePage onNavigate={handleNavigate} />;
-      case 'lesson':
-        return <VideoLessonPage onNavigate={handleNavigate} />;
-      case 'catalog':
-        return <LessonsCatalog onNavigate={handleNavigate} />;
-      case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} />;
-      case 'vocabulary':
-        return <VocabularyPage onNavigate={handleNavigate} />;
-      case 'uikit':
+  const renderPage = (page: PageId) => {
+    switch (page) {
+      case "home":
+        return (
+          <HomePage
+            onNavigate={handleNavigate}
+            redirectAfterLogin={redirectAfterLogin}
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "catalog":
+        return isAuthenticated ? (
+          <LessonsCatalog
+            onNavigate={handleNavigate}
+          />
+        ) : (
+          <LoginPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin="catalog"
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "lesson":
+        return isAuthenticated ? (
+          selectedLesson ? (
+            <VideoLessonPage
+              lesson={selectedLesson}
+              onNavigate={handleNavigate}
+            />
+          ) : (
+            <LessonsCatalog onNavigate={handleNavigate} />
+          )
+        ) : (
+          <LoginPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin="lesson"
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "vocabulary":
+        return isAuthenticated ? (
+          <VocabularyPage onNavigate={handleNavigate} />
+        ) : (
+          <LoginPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin="vocabulary"
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "dashboard":
+        return isAuthenticated ? (
+          <Dashboard onNavigate={handleNavigate} />
+        ) : (
+          <LoginPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin="dashboard"
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "login":
+        return (
+          <LoginPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin={redirectAfterLogin}
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "register":
+        return (
+          <RegisterPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin={redirectAfterLogin}
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
+      case "uikit":
         return <UIKitShowcase onNavigate={handleNavigate} />;
 
-      case 'login':
-        return <LoginPage onNavigate={handleNavigate} />;
-      case 'register':
-        return <RegisterPage onNavigate={handleNavigate} />;
+      case "studio":
+        return isAuthenticated && user?.is_content_manager ? (
+          <ContentStudioPage onNavigate={handleNavigate} />
+        ) : (
+          <LoginPage
+            onNavigate={handleNavigate}
+            redirectAfterLogin="studio"
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
+
       default:
-        return <HomePage onNavigate={handleNavigate} />;
+        return (
+          <HomePage
+            onNavigate={handleNavigate}
+            redirectAfterLogin={redirectAfterLogin}
+            setRedirectAfterLogin={setRedirectAfterLogin}
+          />
+        );
     }
   };
 
@@ -57,20 +185,19 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
 
-      {/* UI Kit Access Button */}
-      <button
-        onClick={() => setCurrentPage('uikit')}
-        className="fixed bottom-24 md:bottom-8 right-8 z-40 px-4 py-2 bg-accent text-accent-foreground rounded-full shadow-lg hover:shadow-xl transition-all text-sm font-medium"
-      >
-        🎨 UI Kit
-      </button>
-
       <main className="flex-1 pb-20 md:pb-0">
-        <p className="text-center text-sm text-gray-500 mb-4">{backendMessage}</p>
-        {renderPage()}
+        {visitedPages.map((page) => (
+          <section
+            key={page}
+            className={currentPage === page ? "animate-page-enter" : "hidden"}
+            aria-hidden={currentPage !== page}
+          >
+            {renderPage(page)}
+          </section>
+        ))}
       </main>
 
-      <Footer />
+      <Footer onNavigate={handleNavigate} />
       <MobileNav currentPage={currentPage} onNavigate={handleNavigate} />
     </div>
   );

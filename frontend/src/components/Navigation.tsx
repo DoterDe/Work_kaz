@@ -1,122 +1,160 @@
-import React from 'react';
-import { Button } from './ui/Button';
-import { Menu, X } from 'lucide-react';
+import React, { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  BookOpenCheck,
+  Home,
+  LayoutDashboard,
+  Library,
+  LogOut,
+  Menu,
+  Sparkles,
+  User,
+  X,
+} from "lucide-react";
+
+import { useAuth } from "../auth/AuthContext";
+import { Button } from "./ui/Button";
 
 interface NavigationProps {
   currentPage: string;
   onNavigate: (page: string) => void;
 }
 
-export function Navigation({ currentPage, onNavigate }: NavigationProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  
-  const menuItems = [
-    { label: 'Home', page: 'home' },
-    { label: 'Courses', page: 'catalog' },
+export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
+  const { isAuthenticated, user, logout } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-    { label: 'Vocabulary', page: 'vocabulary' },
+  const items = [
+    { label: "Home", page: "home", icon: Home },
+    ...(isAuthenticated
+      ? [
+          { label: "Catalog", page: "catalog", icon: Library },
+          { label: "Vocabulary", page: "vocabulary", icon: BookOpenCheck },
+          { label: "Dashboard", page: "dashboard", icon: LayoutDashboard },
+          ...(user?.is_content_manager
+            ? [{ label: "Studio", page: "studio", icon: Sparkles }]
+            : []),
+        ]
+      : []),
   ];
-  
+
+  const closeAndNavigate = (page: string) => {
+    onNavigate(page);
+    setMobileOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    closeAndNavigate("home");
+  };
+
   return (
-    <nav className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <div 
-            className="flex items-center gap-3 cursor-pointer"
-            onClick={() => onNavigate('home')}
-          >
-            <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center">
-              <span className="text-white text-xl">Q</span>
-            </div>
-            <div>
-              <div className="font-semibold text-lg">Qazaq Video Learn</div>
-              <div className="text-xs text-muted-foreground">Master Kazakh Language</div>
-            </div>
-          </div>
-          
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-6">
-            {menuItems.map((item) => (
+    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        <button
+          className="rounded-xl px-2 py-1 text-left transition-colors hover:bg-muted"
+          onClick={() => onNavigate("home")}
+        >
+          <div className="text-lg font-semibold">Qazaq Video Learn</div>
+          <div className="text-xs text-muted-foreground">Learn with real lessons</div>
+        </button>
+
+        <div className="hidden items-center gap-2 md:flex">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const active = currentPage === item.page;
+            return (
               <button
                 key={item.page}
                 onClick={() => onNavigate(item.page)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  currentPage === item.page
-                    ? 'text-primary bg-primary/10'
-                    : 'text-foreground hover:bg-muted'
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
+                  active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
                 }`}
               >
+                <Icon className="h-4 w-4" />
                 {item.label}
               </button>
-            ))}
-          </div>
-          
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('login')}>
-              Login
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => onNavigate('register')}>
-              Register
-            </Button>
-          </div>
-          
-          {/* Mobile Menu Toggle */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
+            );
+          })}
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
-            {menuItems.map((item) => (
-              <button
-                key={item.page}
-                onClick={() => {
-                  onNavigate(item.page);
-                  setMobileMenuOpen(false);
-                }}
-                className={`block w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                  currentPage === item.page
-                    ? 'text-primary bg-primary/10'
-                    : 'text-foreground hover:bg-muted'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-
-            {/* Mobile Auth Buttons */}
-            <div className="flex flex-col gap-2 mt-4 px-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onNavigate('login');
-                  setMobileMenuOpen(false);
-                }}
-              >
+          {!isAuthenticated ? (
+            <>
+              <Button variant="ghost" onClick={() => onNavigate("login")}>
                 Login
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  onNavigate('register');
-                  setMobileMenuOpen(false);
-                }}
+              <Button onClick={() => onNavigate("register")}>Register</Button>
+            </>
+          ) : (
+            <>
+              <button
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-muted"
+                onClick={() => onNavigate("dashboard")}
               >
-                Register
+                <User className="h-4 w-4" />
+                {user?.username || "Account"}
+              </button>
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                Logout
               </Button>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
+
+        <button
+          className="rounded-xl p-2 transition-colors hover:bg-muted md:hidden"
+          onClick={() => setMobileOpen((prev) => !prev)}
+        >
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="border-t border-border bg-card md:hidden"
+          >
+            <div className="space-y-2 p-4">
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.page}
+                    className="inline-flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"
+                    onClick={() => closeAndNavigate(item.page)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+
+              {!isAuthenticated ? (
+                <>
+                  <Button className="w-full" variant="ghost" onClick={() => closeAndNavigate("login")}>
+                    Login
+                  </Button>
+                  <Button className="w-full" onClick={() => closeAndNavigate("register")}>
+                    Register
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button className="w-full" variant="ghost" onClick={() => closeAndNavigate("dashboard")}>
+                    Dashboard
+                  </Button>
+                  <Button className="w-full" variant="outline" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
-}
+};

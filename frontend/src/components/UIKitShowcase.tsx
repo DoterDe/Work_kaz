@@ -252,7 +252,7 @@ export function UIKitShowcase({ onNavigate }: UIKitShowcaseProps) {
             duration="8 min"
             thumbnail="https://images.unsplash.com/photo-1573496774379-b930dba17d8b?w=400"
             progress={0}
-            onClick={() => {}}
+            onClick={() => onNavigate('catalog')}
           />
           
           <LessonCard
@@ -261,7 +261,7 @@ export function UIKitShowcase({ onNavigate }: UIKitShowcaseProps) {
             duration="12 min"
             thumbnail="https://images.unsplash.com/photo-1573496774379-b930dba17d8b?w=400"
             progress={45}
-            onClick={() => {}}
+            onClick={() => onNavigate('catalog')}
           />
           
           <LessonCard
@@ -270,7 +270,7 @@ export function UIKitShowcase({ onNavigate }: UIKitShowcaseProps) {
             duration="15 min"
             thumbnail="https://images.unsplash.com/photo-1573496774379-b930dba17d8b?w=400"
             progress={100}
-            onClick={() => {}}
+            onClick={() => onNavigate('catalog')}
           />
         </div>
       </section>

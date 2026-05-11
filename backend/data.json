@@ -1,0 +1,36 @@
+[
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$Js4vJlE4ZwNggGp6DxAzyu$g7/mODXPCunS1Hmx+6Y4HFIg9VHDhpUXfbritghFKO8=",
+    "last_login": null,
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2025-12-14T09:07:17.551Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$LMBSdtPPm7VerktrIcCO98$V3uUpUqcPkMSnzGE2y3mxW+bmRrYxNE7yCo+2oxqAqY=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "aBOKA",
+    "first_name": "",
+    "last_name": "",
+    "email": "chil.aboka2008@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-12-14T19:13:54.066Z",
+    "groups": [],
+    "user_permissions": []
+  }
+}
+]

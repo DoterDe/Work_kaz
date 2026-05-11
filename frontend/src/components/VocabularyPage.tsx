@@ -1,344 +1,497 @@
-import React, { useState } from 'react';
-import { Card } from './ui/Card';
-import { Button } from './ui/Button';
-import { VocabularyCard } from './ui/VocabularyCard';
-import { SearchInput } from './ui/SearchInput';
-import { BookOpen, Brain, Target, RotateCw } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { BookOpen, Brain, Shuffle, Target } from "lucide-react";
+
+import api from "../api/axios";
+import { extractApiErrorMessage } from "../utils/apiError";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { SearchInput } from "./ui/SearchInput";
 
 interface VocabularyPageProps {
   onNavigate: (page: string) => void;
 }
 
+interface VocabularyWord {
+  id: number;
+  word: string;
+  translation: string;
+  pronunciation: string;
+  example: string;
+  category: string;
+  level: "A1" | "A2" | "B1" | "B2" | null;
+  lesson: number | null;
+  lesson_title?: string;
+}
+
+type Mode = "learn" | "flashcards" | "quiz";
+
+interface QuizOption {
+  word_id: number;
+  translation: string;
+}
+
+interface QuizQuestion {
+  question_word_id: number;
+  word: string;
+  pronunciation: string;
+  options: QuizOption[];
+}
+
+interface QuizGenerateResponse {
+  token: string;
+  question_count: number;
+  category: string;
+  level: string;
+  questions: QuizQuestion[];
+}
+
+interface QuizReviewItem {
+  question_word: string;
+  correct_translation: string;
+  selected_translation: string;
+  is_correct: boolean;
+}
+
+interface QuizHistoryItem {
+  id: number;
+  score_percent: number;
+  correct_answers: number;
+  total_questions: number;
+  category_filter: string;
+  level_filter: string | null;
+  created_at: string;
+}
+
+interface QuizSubmitResponse {
+  attempt_id: number;
+  score_percent: number;
+  correct_answers: number;
+  total_questions: number;
+  review: QuizReviewItem[];
+  history: QuizHistoryItem[];
+}
+
 export function VocabularyPage({ onNavigate }: VocabularyPageProps) {
-  const [mode, setMode] = useState<'learn' | 'flashcards' | 'test'>('flashcards');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  
-  const categories = ['All', 'Greetings', 'Numbers', 'Family', 'Food', 'Travel', 'Work', 'Time'];
-  
-  const vocabularyWords = [
-    { 
-      word: 'Сәлем', 
-      pronunciation: '/sɑːˈlem/', 
-      translation: 'Hello', 
-      example: 'Сәлем, қалайсың?',
-      category: 'Greetings',
-      saved: true 
-    },
-    { 
-      word: 'Қалайсың?', 
-      pronunciation: '/qɑˈlɑjsɯŋ/', 
-      translation: 'How are you?', 
-      example: 'Сәлем, қалайсың? - Жақсы, рахмет!',
-      category: 'Greetings',
-      saved: true 
-    },
-    { 
-      word: 'Рахмет', 
-      pronunciation: '/rɑχˈmet/', 
-      translation: 'Thank you', 
-      example: 'Рахмет көмегің үшін',
-      category: 'Greetings',
-      saved: false 
-    },
-    { 
-      word: 'Кешіріңіз', 
-      pronunciation: '/keʃiˈriŋiz/', 
-      translation: 'Excuse me / Sorry', 
-      example: 'Кешіріңіз, мен кешігіп қалдым',
-      category: 'Greetings',
-      saved: false 
-    },
-    { 
-      word: 'Бір', 
-      pronunciation: '/bir/', 
-      translation: 'One', 
-      example: 'Бір алма',
-      category: 'Numbers',
-      saved: true 
-    },
-    { 
-      word: 'Екі', 
-      pronunciation: '/jeki/', 
-      translation: 'Two', 
-      example: 'Екі кітап',
-      category: 'Numbers',
-      saved: false 
-    },
-    { 
-      word: 'Ата', 
-      pronunciation: '/ɑˈtɑ/', 
-      translation: 'Grandfather', 
-      example: 'Менің атам',
-      category: 'Family',
-      saved: true 
-    },
-    { 
-      word: 'Әже', 
-      pronunciation: '/æˈʒe/', 
-      translation: 'Grandmother', 
-      example: 'Әже үйде',
-      category: 'Family',
-      saved: false 
-    },
-    { 
-      word: 'Нан', 
-      pronunciation: '/nɑn/', 
-      translation: 'Bread', 
-      example: 'Нан жеймін',
-      category: 'Food',
-      saved: true 
-    },
-    { 
-      word: 'Су', 
-      pronunciation: '/su/', 
-      translation: 'Water', 
-      example: 'Су ішемін',
-      category: 'Food',
-      saved: false 
-    },
-    { 
-      word: 'Қайда', 
-      pronunciation: '/qɑjˈdɑ/', 
-      translation: 'Where', 
-      example: 'Қайда барасың?',
-      category: 'Travel',
-      saved: true 
-    },
-    { 
-      word: 'Жұмыс', 
-      pronunciation: '/ʒʊˈmɯs/', 
-      translation: 'Work', 
-      example: 'Мен жұмыстамын',
-      category: 'Work',
-      saved: false 
-    },
-  ];
-  
-  const filteredWords = vocabularyWords.filter(word => {
-    const matchesSearch = 
-      word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      word.translation.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || word.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-  
+  const [mode, setMode] = useState<Mode>("flashcards");
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedLevel, setSelectedLevel] = useState("All");
+  const [words, setWords] = useState<VocabularyWord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [flashcardIndex, setFlashcardIndex] = useState(0);
+  const [showBack, setShowBack] = useState(false);
+  const [quizToken, setQuizToken] = useState("");
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizResult, setQuizResult] = useState<QuizSubmitResponse | null>(null);
+  const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
+
+  useEffect(() => {
+    const loadWords = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await api.get<VocabularyWord[]>("/vocabulary/");
+        setWords(res.data);
+      } catch (error) {
+        setError(extractApiErrorMessage(error, "Failed to load dictionary."));
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadWords();
+  }, []);
+
+  const loadQuizHistory = async () => {
+    try {
+      const res = await api.get<QuizHistoryItem[]>("/vocabulary/quiz/history/");
+      setQuizHistory(res.data);
+    } catch {
+      setQuizHistory([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadQuizHistory();
+  }, []);
+
+  const categories = useMemo(() => {
+    const unique = new Set(words.map((item) => item.category).filter(Boolean));
+    return ["All", ...Array.from(unique)];
+  }, [words]);
+
+  const levels = useMemo(() => {
+    const unique = new Set(words.map((item) => item.level).filter(Boolean));
+    return ["All", ...Array.from(unique) as string[]];
+  }, [words]);
+
+  const filteredWords = useMemo(() => {
+    return words.filter((word) => {
+      const matchesSearch =
+        word.word.toLowerCase().includes(search.toLowerCase()) ||
+        word.translation.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "All" || word.category === selectedCategory;
+      const matchesLevel = selectedLevel === "All" || word.level === selectedLevel;
+      return matchesSearch && matchesCategory && matchesLevel;
+    });
+  }, [words, search, selectedCategory, selectedLevel]);
+
+  useEffect(() => {
+    setFlashcardIndex(0);
+    setShowBack(false);
+  }, [filteredWords.length]);
+
+  const currentFlashcard = filteredWords[flashcardIndex];
+
   const stats = [
-    { label: 'Total Words', value: vocabularyWords.length, icon: BookOpen, color: 'text-primary' },
-    { label: 'Learning', value: '23', icon: Brain, color: 'text-accent-foreground' },
-    { label: 'Mastered', value: '156', icon: Target, color: 'text-secondary' },
+    { label: "Total Words", value: words.length, icon: BookOpen, color: "text-primary" },
+    { label: "Filtered", value: filteredWords.length, icon: Brain, color: "text-secondary" },
+    { label: "Categories", value: categories.length - 1, icon: Target, color: "text-accent-foreground" },
   ];
-  
+
+  const nextFlashcard = () => {
+    if (!filteredWords.length) return;
+    setShowBack(false);
+    setFlashcardIndex((prev) => (prev + 1) % filteredWords.length);
+  };
+
+  const shuffleFlashcards = () => {
+    if (!filteredWords.length) return;
+    const randomIndex = Math.floor(Math.random() * filteredWords.length);
+    setFlashcardIndex(randomIndex);
+    setShowBack(false);
+  };
+
+  const generateQuiz = async () => {
+    setQuizLoading(true);
+    setError("");
+    setQuizResult(null);
+    try {
+      const res = await api.get<QuizGenerateResponse>("/vocabulary/quiz/", {
+        params: {
+          category: selectedCategory !== "All" ? selectedCategory : undefined,
+          level: selectedLevel !== "All" ? selectedLevel : undefined,
+          question_count: 8,
+        },
+      });
+      setQuizToken(res.data.token);
+      setQuizQuestions(res.data.questions);
+      setQuizAnswers({});
+    } catch (error) {
+      setQuizToken("");
+      setQuizQuestions([]);
+      setError(
+        extractApiErrorMessage(
+          error,
+          "Failed to generate quiz. Try different filters or add more words."
+        )
+      );
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const submitQuiz = async () => {
+    if (!quizToken || quizQuestions.length === 0) return;
+    if (Object.keys(quizAnswers).length !== quizQuestions.length) {
+      setError("Please answer all quiz questions before submitting.");
+      return;
+    }
+
+    setQuizSubmitting(true);
+    setError("");
+    try {
+      const answers = quizQuestions.map((question) => ({
+        question_word_id: question.question_word_id,
+        selected_word_id: quizAnswers[question.question_word_id],
+      }));
+
+      const res = await api.post<QuizSubmitResponse>("/vocabulary/quiz/submit/", {
+        token: quizToken,
+        category: selectedCategory !== "All" ? selectedCategory : "",
+        level: selectedLevel !== "All" ? selectedLevel : "",
+        answers,
+      });
+
+      setQuizResult(res.data);
+      setQuizHistory(res.data.history);
+    } catch (error) {
+      setError(extractApiErrorMessage(error, "Failed to submit quiz."));
+    } finally {
+      setQuizSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mode === "quiz") {
+      void generateQuiz();
+    }
+  }, [mode, selectedCategory, selectedLevel]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="mb-4">Vocabulary Practice</h1>
-        <p className="text-xl text-muted-foreground">
-          Build your Kazakh vocabulary with interactive flashcards
-        </p>
-      </div>
-      
-      {/* Stats */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.label}>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center">
-                  <Icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
-                <div>
-                  <div className="text-2xl font-semibold">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-      
-      {/* Mode Selector */}
-      <Card className="mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex gap-2">
-            <Button
-              variant={mode === 'learn' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setMode('learn')}
-            >
-              <BookOpen className="w-4 h-4" />
-              Learn
-            </Button>
-            <Button
-              variant={mode === 'flashcards' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setMode('flashcards')}
-            >
-              <RotateCw className="w-4 h-4" />
-              Flashcards
-            </Button>
-            <Button
-              variant={mode === 'test' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setMode('test')}
-            >
-              <Target className="w-4 h-4" />
-              Test
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="mb-8 rounded-[28px] border border-border bg-gradient-to-br from-card to-secondary/10 p-6">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="mb-2">Vocabulary Lab</h1>
+              <p className="text-muted-foreground">
+                Practice words from all lessons and improve retention.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => onNavigate("catalog")}>
+              Back to lessons
             </Button>
           </div>
-          
-          <Button variant="outline" size="sm">
-            Reset Progress
-          </Button>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {stats.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card key={item.label} className="rounded-2xl p-4 text-center">
+                  <Icon className={`mx-auto mb-2 h-5 w-5 ${item.color}`} />
+                  <div className="text-xl font-semibold">{item.value}</div>
+                  <div className="text-xs text-muted-foreground">{item.label}</div>
+                </Card>
+              );
+            })}
+          </div>
         </div>
-      </Card>
-      
-      {/* Search and Filter */}
-      <div className="mb-8">
+      </motion.div>
+
+      {error && (
+        <Card className="mb-4 rounded-2xl border-destructive/20 bg-destructive/10 text-destructive">
+          {error}
+        </Card>
+      )}
+
+      <Card className="mb-6 rounded-[28px]">
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(["learn", "flashcards", "quiz"] as Mode[]).map((item) => (
+            <Button
+              key={item}
+              variant={mode === item ? "primary" : "ghost"}
+              onClick={() => setMode(item)}
+            >
+              {item}
+            </Button>
+          ))}
+        </div>
+
         <div className="mb-4">
-          <SearchInput 
-            placeholder="Search vocabulary..."
-            value={searchQuery}
-            onChange={setSearchQuery}
+          <SearchInput
+            placeholder="Search words or translations..."
+            value={search}
+            onChange={setSearch}
           />
         </div>
-        
-        {/* Category Filter */}
+
         <div className="flex flex-wrap gap-2">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full text-sm transition-colors ${
+              className={`rounded-full px-4 py-2 text-sm transition-colors ${
                 selectedCategory === category
-                  ? 'bg-primary text-white'
-                  : 'bg-card border border-border hover:bg-muted'
+                  ? "bg-primary text-white"
+                  : "border border-border bg-card hover:bg-muted"
               }`}
             >
               {category}
             </button>
           ))}
         </div>
-      </div>
-      
-      {/* Flashcards Mode */}
-      {mode === 'flashcards' && (
-        <div>
-          <div className="mb-6 flex items-center justify-between">
-            <h2>Flashcards</h2>
-            <div className="text-sm text-muted-foreground">
-              {filteredWords.length} cards
-            </div>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredWords.map((word, index) => (
-              <VocabularyCard 
-                key={index}
-                {...word}
-                onToggleSave={() => {}}
-              />
-            ))}
-          </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {levels.map((level) => (
+            <button
+              key={level}
+              onClick={() => setSelectedLevel(level)}
+              className={`rounded-full px-4 py-2 text-xs transition-colors ${
+                selectedLevel === level
+                  ? "bg-secondary text-white"
+                  : "border border-border bg-card hover:bg-muted"
+              }`}
+            >
+              {level}
+            </button>
+          ))}
         </div>
+      </Card>
+
+      {loading ? (
+        <p className="py-10 text-center text-muted-foreground">Loading vocabulary...</p>
+      ) : null}
+
+      {!loading && filteredWords.length === 0 && (
+        <Card className="rounded-[28px] py-10 text-center">
+          No words found for the current filters.
+        </Card>
       )}
-      
-      {/* Learn Mode */}
-      {mode === 'learn' && (
-        <div>
-          <div className="mb-6 flex items-center justify-between">
-            <h2>Learn Mode</h2>
-            <div className="text-sm text-muted-foreground">
-              {filteredWords.length} words
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            {filteredWords.map((word, index) => (
-              <Card key={index} hover>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3>{word.word}</h3>
-                      <span className="text-sm text-muted-foreground italic">
-                        {word.pronunciation}
-                      </span>
-                    </div>
-                    <p className="text-lg mb-2">{word.translation}</p>
-                    <p className="text-sm text-muted-foreground italic">
-                      Example: {word.example}
-                    </p>
-                    <div className="mt-3">
-                      <span className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                        {word.category}
-                      </span>
-                    </div>
-                  </div>
-                  <button className="p-3 hover:bg-muted rounded-full transition-colors">
-                    <BookOpen className={`w-5 h-5 ${word.saved ? 'text-accent fill-accent' : 'text-muted-foreground'}`} />
-                  </button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Test Mode */}
-      {mode === 'test' && (
-        <div>
-          <div className="mb-6">
-            <h2 className="mb-2">Vocabulary Test</h2>
-            <p className="text-muted-foreground">
-              Test your knowledge of {filteredWords.length} words
-            </p>
-          </div>
-          
-          <Card className="max-w-2xl mx-auto">
-            <div className="text-center mb-6">
-              <div className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm mb-4">
-                Question 1 of {filteredWords.length}
+
+      {!loading && filteredWords.length > 0 && mode === "learn" && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredWords.map((word) => (
+            <Card key={word.id} hover className="rounded-[24px]">
+              <h3 className="mb-1">{word.word}</h3>
+              <p className="mb-2 text-sm text-muted-foreground">{word.pronunciation || "-"}</p>
+              <p className="mb-3">{word.translation}</p>
+              {word.example && (
+                <p className="mb-3 text-sm text-muted-foreground">Example: {word.example}</p>
+              )}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{word.category || "General"}</span>
+                <span>{word.level || "-"}</span>
               </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {!loading && filteredWords.length > 0 && mode === "flashcards" && currentFlashcard && (
+        <div className="mx-auto max-w-2xl">
+          <Card
+            className="min-h-[280px] cursor-pointer rounded-[28px] text-center"
+            onClick={() => setShowBack((prev) => !prev)}
+          >
+            <div className="mb-4 text-xs text-muted-foreground">
+              Card {flashcardIndex + 1} / {filteredWords.length}
             </div>
-            
-            <div className="mb-8">
-              <h3 className="text-center mb-6">What does "Сәлем" mean?</h3>
-              
-              <div className="space-y-3">
-                {['Hello', 'Goodbye', 'Thank you', 'Please'].map((option, index) => (
-                  <button
-                    key={index}
-                    className="w-full p-4 bg-muted/50 rounded-2xl hover:bg-primary/5 border-2 border-transparent hover:border-primary transition-all text-left"
+            {!showBack ? (
+              <>
+                <h2 className="mb-2">{currentFlashcard.word}</h2>
+                <p className="text-muted-foreground">
+                  {currentFlashcard.pronunciation || "Click to flip"}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="mb-2">{currentFlashcard.translation}</h2>
+                <p className="text-muted-foreground">
+                  {currentFlashcard.example || "No example yet"}
+                </p>
+              </>
+            )}
+          </Card>
+          <div className="mt-4 flex justify-center gap-3">
+            <Button variant="outline" onClick={shuffleFlashcards}>
+              <Shuffle className="h-4 w-4" />
+              Shuffle
+            </Button>
+            <Button onClick={nextFlashcard}>Next</Button>
+          </div>
+        </div>
+      )}
+
+      {!loading && mode === "quiz" && (
+        <div className="space-y-6">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => void generateQuiz()} disabled={quizLoading}>
+              {quizLoading ? "Generating..." : "Generate New Quiz"}
+            </Button>
+          </div>
+
+          {quizQuestions.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {quizQuestions.map((question, index) => (
+                <Card key={question.question_word_id} className="rounded-[24px]">
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    Question {index + 1} / {quizQuestions.length}
+                  </div>
+                  <h3 className="mb-1">{question.word}</h3>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    {question.pronunciation || "-"}
+                  </p>
+                  <div className="grid gap-2">
+                    {question.options.map((option) => (
+                      <button
+                        key={option.word_id}
+                        onClick={() =>
+                          setQuizAnswers((prev) => ({
+                            ...prev,
+                            [question.question_word_id]: option.word_id,
+                          }))
+                        }
+                        className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                          quizAnswers[question.question_word_id] === option.word_id
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:bg-primary/5"
+                        }`}
+                      >
+                        {option.translation}
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-[24px] text-center">
+              No quiz questions loaded yet.
+            </Card>
+          )}
+
+          {quizQuestions.length > 0 && (
+            <div className="flex justify-end">
+              <Button onClick={() => void submitQuiz()} disabled={quizSubmitting || quizLoading}>
+                {quizSubmitting ? "Checking..." : "Submit Quiz"}
+              </Button>
+            </div>
+          )}
+
+          {quizResult && (
+            <Card className="rounded-[24px]">
+              <h3 className="mb-2">Quiz Result</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Score: {quizResult.score_percent}% ({quizResult.correct_answers}/
+                {quizResult.total_questions})
+              </p>
+              <div className="grid gap-2">
+                {quizResult.review.map((item, index) => (
+                  <div
+                    key={`${item.question_word}-${index}`}
+                    className={`rounded-xl border px-3 py-2 text-sm ${
+                      item.is_correct
+                        ? "border-secondary/30 bg-secondary/10"
+                        : "border-destructive/30 bg-destructive/10"
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-border">
-                        {String.fromCharCode(65 + index)}
-                      </div>
-                      <span>{option}</span>
-                    </div>
-                  </button>
+                    <span className="font-medium">{item.question_word}</span> - selected:{" "}
+                    {item.selected_translation} - correct: {item.correct_translation}
+                  </div>
                 ))}
               </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <Button variant="outline" size="lg" className="flex-1">
-                Skip
-              </Button>
-              <Button variant="primary" size="lg" className="flex-1">
-                Next Question
-              </Button>
-            </div>
+            </Card>
+          )}
+
+          <Card className="rounded-[24px]">
+            <h3 className="mb-3">Recent Quiz Attempts</h3>
+            {quizHistory.length > 0 ? (
+              <div className="space-y-2">
+                {quizHistory.slice(0, 10).map((attempt) => (
+                  <div
+                    key={attempt.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-sm"
+                  >
+                    <span>
+                      {attempt.score_percent}% ({attempt.correct_answers}/{attempt.total_questions})
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(attempt.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No attempts yet.</p>
+            )}
           </Card>
         </div>
-      )}
-      
-      {filteredWords.length === 0 && (
-        <Card className="text-center py-12">
-          <p className="text-muted-foreground">No vocabulary words found</p>
-        </Card>
       )}
     </div>
   );

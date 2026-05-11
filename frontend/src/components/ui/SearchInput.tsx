@@ -5,15 +5,17 @@ interface SearchInputProps {
   placeholder?: string;
   value?: string;
   onChange?: (value: string) => void;
+  className?: string;
 }
 
 export function SearchInput({ 
   placeholder = 'Search...', 
   value = '',
-  onChange 
+  onChange,
+  className = '',
 }: SearchInputProps) {
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
       <input
         type="text"
