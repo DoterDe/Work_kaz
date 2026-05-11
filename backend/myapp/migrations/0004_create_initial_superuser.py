@@ -16,7 +16,7 @@ def create_superuser(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('myapp', '0003_auditlog_vocabularyquizattempt'),  # ← ссылка на предыдущую миграцию
+        ('myapp', '0004_create_initial_superuser.py'),  # ← ссылка на предыдущую миграцию
     ]
 
     operations = [
