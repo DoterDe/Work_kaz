@@ -8,7 +8,7 @@ def create_superuser(apps, schema_editor):
         User.objects.create_superuser(
             username='admin',
             email='admin@example.com',
-            password='Aboka2008'  # ← замените на реальный пароль!
+            password='Aboka2008'
         )
         print("✅ Суперпользователь создан")
     else:
@@ -16,7 +16,7 @@ def create_superuser(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('myapp', '0004_create_initial_superuser.py'),  # ← ссылка на предыдущую миграцию
+        ('myapp', '0003_auditlog_vocabularyquizattempt'),  # ← ИСПРАВЛЕНО!
     ]
 
     operations = [
