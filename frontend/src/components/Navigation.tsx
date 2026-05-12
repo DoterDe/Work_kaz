@@ -24,8 +24,10 @@ interface NavigationProps {
 
 export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
   const { isAuthenticated, user, logout } = useAuth();
-  const { language } = useAppPreferences();
+  const { language, theme } = useAppPreferences();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const isDark = theme === "dark";
 
   const copy =
     language === "ru"
@@ -79,14 +81,24 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+    <nav 
+      className={`sticky top-0 z-50 border-b transition-colors ${
+        isDark 
+          ? "bg-slate-900 border-slate-800" 
+          : "bg-white border-gray-200"
+      }`}
+    >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <button
           className="rounded-xl px-2 py-1 text-left transition-colors hover:bg-muted"
           onClick={() => onNavigate("home")}
         >
-          <div className="text-lg font-semibold">Qazaq Video Learn</div>
-          <div className="text-xs text-muted-foreground">{copy.brandSubtitle}</div>
+          <div className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+            Qazaq Video Learn
+          </div>
+          <div className={`text-xs ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+            {copy.brandSubtitle}
+          </div>
         </button>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -98,7 +110,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
                 key={item.page}
                 onClick={() => onNavigate(item.page)}
                 className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
-                  active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+                  active 
+                    ? "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400" 
+                    : isDark 
+                      ? "text-slate-300 hover:bg-slate-800" 
+                      : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -110,7 +126,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
           {!isAuthenticated ? (
             <>
               <AppControls />
-              <Button variant="ghost" onClick={() => onNavigate("login")}>
+              <Button 
+                variant="ghost" 
+                onClick={() => onNavigate("login")}
+                className={isDark ? "text-slate-300 hover:bg-slate-800" : "text-gray-700 hover:bg-gray-100"}
+              >
                 {copy.login}
               </Button>
               <Button onClick={() => onNavigate("register")}>{copy.register}</Button>
@@ -119,7 +139,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
             <>
               <AppControls />
               <button
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-muted"
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
+                  isDark ? "text-slate-300 hover:bg-slate-800" : "text-gray-700 hover:bg-gray-100"
+                }`}
                 onClick={() => onNavigate("dashboard")}
               >
                 <User className="h-4 w-4" />
@@ -134,7 +156,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
         </div>
 
         <button
-          className="rounded-xl p-2 transition-colors hover:bg-muted md:hidden"
+          className={`rounded-xl p-2 transition-colors ${
+            isDark ? "hover:bg-slate-800" : "hover:bg-gray-100"
+          } md:hidden`}
           onClick={() => setMobileOpen((prev) => !prev)}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -147,7 +171,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="border-t border-border bg-card md:hidden"
+            className={`border-t ${
+              isDark ? "border-slate-800 bg-slate-900" : "border-gray-200 bg-white"
+            } md:hidden`}
           >
             <div className="space-y-2 p-4">
               <div className="flex justify-end">
@@ -158,7 +184,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
                 return (
                   <button
                     key={item.page}
-                    className="inline-flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"
+                    className={`inline-flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left ${
+                      isDark ? "text-slate-300 hover:bg-slate-800" : "text-gray-700 hover:bg-gray-100"
+                    }`}
                     onClick={() => closeAndNavigate(item.page)}
                   >
                     <Icon className="h-4 w-4" />
@@ -193,3 +221,5 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
     </nav>
   );
 };
+
+export default Navigation;
