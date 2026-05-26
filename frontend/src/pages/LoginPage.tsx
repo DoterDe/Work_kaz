@@ -78,7 +78,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           ],
         };
 
-  const [email, setEmail] = useState("");
+  // const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,14 +96,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
   const handleLogin = async () => {
     setError("");
-    if (!email || !password) {
+    if (!identifier || !password) {
       setError(copy.fillError);
       return;
     }
 
     setLoading(true);
     try {
-      const tokens = await authService.login({ username: email, password });
+      const tokens = await authService.login({
+        login: identifier,
+        password,
+      });
       await loginWithTokens(tokens);
       navigateAfterSuccess();
     } catch (requestError) {
@@ -192,13 +196,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             ) : null}
 
             <Input
-              label={copy.email}
-              type="email"
-              value={email}
-              autoComplete="email"
-              placeholder="name@example.com"
+              label="Email или имя пользователя"
+              type="text"
+              value={identifier}
+              autoComplete="username"
+              placeholder="name@example.com или username"
               leftIcon={<Mail className="h-5 w-5" aria-hidden="true" />}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => setIdentifier(event.target.value)}
             />
 
             <Input
