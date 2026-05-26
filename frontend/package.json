@@ -2,6 +2,7 @@
   "name": "Educational Web Platform UI",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -46,6 +47,7 @@
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.26",
+    "gsap": "^3.15.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.487.0",
     "next-themes": "^0.4.6",
@@ -61,8 +63,10 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "4.1.12",
     "@types/node": "^20.10.0",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   }
 }

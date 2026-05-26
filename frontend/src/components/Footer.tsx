@@ -3,6 +3,8 @@ import { Facebook, Instagram, Mail, Youtube } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
+import { useReducedMotion } from "../hooks/useReducedMotion";
+import { cn } from "./ui/utils";
 
 interface FooterProps {
   onNavigate: (page: string) => void;
@@ -13,6 +15,7 @@ const supportEmail = "support@qazaqvideolearn.com";
 export function Footer({ onNavigate }: FooterProps) {
   const { isAuthenticated, user } = useAuth();
   const { language } = useAppPreferences();
+  const prefersReducedMotion = useReducedMotion();
 
   const copy =
     language === "ru"
@@ -35,6 +38,7 @@ export function Footer({ onNavigate }: FooterProps) {
           rights: "Все права защищены.",
           supportSubject: "Поддержка Qazaq Video Learn",
           feedbackSubject: "Отзыв о Qazaq Video Learn",
+          social: "Социальные сети",
         }
       : {
           description:
@@ -55,14 +59,21 @@ export function Footer({ onNavigate }: FooterProps) {
           rights: "Барлық құқықтар қорғалған.",
           supportSubject: "Qazaq Video Learn қолдауы",
           feedbackSubject: "Qazaq Video Learn туралы пікір",
+          social: "Әлеуметтік желілер",
         };
+
+  const linkClass =
+    "interactive rounded-md text-left text-muted-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
   const scrollToSection = (sectionId: string) => {
     onNavigate("home");
     window.setTimeout(() => {
       const target = document.getElementById(sectionId);
       if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        target.scrollIntoView({
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
       }
     }, 90);
   };
@@ -72,54 +83,52 @@ export function Footer({ onNavigate }: FooterProps) {
   };
 
   return (
-    <footer className="mt-20 border-t border-border bg-card">
+    <footer className="relative z-content mt-20 border-t border-border/70 bg-card/40">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-          <div className="col-span-1">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div>
             <button
-              className="mb-4 flex items-center gap-3 rounded-2xl pr-3 text-left transition-colors hover:text-primary"
+              type="button"
+              className="interactive mb-4 flex items-center gap-3 rounded-2xl pr-3 text-left outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={() => onNavigate("home")}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
-                <span className="text-xl text-white">Q</span>
-              </div>
-              <div className="text-lg font-semibold">Qazaq Video Learn</div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-lg font-semibold text-primary shadow-glow">
+                Q
+              </span>
+              <span>
+                <span className="block text-lg font-semibold text-foreground">
+                  Qazaq Video Learn
+                </span>
+                <span className="block text-xs text-muted-foreground">A1-B2</span>
+              </span>
             </button>
-            <p className="text-sm text-muted-foreground">
+            <p className="max-w-sm text-sm leading-6 text-muted-foreground">
               {copy.description}
             </p>
           </div>
 
           <div>
-            <h4 className="mb-4">{copy.learn}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h2 className="mb-4 text-sm font-semibold text-foreground">{copy.learn}</h2>
+            <ul className="space-y-2 text-sm">
               <li>
-                <button
-                  className="transition-colors hover:text-primary"
-                  onClick={() => onNavigate("catalog")}
-                >
+                <button type="button" className={linkClass} onClick={() => onNavigate("catalog")}>
                   {copy.beginner}
                 </button>
               </li>
               <li>
-                <button
-                  className="transition-colors hover:text-primary"
-                  onClick={() => onNavigate("catalog")}
-                >
+                <button type="button" className={linkClass} onClick={() => onNavigate("catalog")}>
                   {copy.intermediate}
                 </button>
               </li>
               <li>
-                <button
-                  className="transition-colors hover:text-primary"
-                  onClick={() => onNavigate("catalog")}
-                >
+                <button type="button" className={linkClass} onClick={() => onNavigate("catalog")}>
                   {copy.lessons}
                 </button>
               </li>
               <li>
                 <button
-                  className="transition-colors hover:text-primary"
+                  type="button"
+                  className={linkClass}
                   onClick={() => onNavigate(isAuthenticated ? "vocabulary" : "login")}
                 >
                   {copy.vocabulary}
@@ -127,14 +136,15 @@ export function Footer({ onNavigate }: FooterProps) {
               </li>
               <li>
                 <button
-                  className="transition-colors hover:text-primary"
+                  type="button"
+                  className={linkClass}
                   onClick={() =>
                     onNavigate(
                       isAuthenticated
                         ? user?.is_content_manager
                           ? "studio"
                           : "dashboard"
-                        : "login"
+                        : "login",
                     )
                   }
                 >
@@ -145,29 +155,20 @@ export function Footer({ onNavigate }: FooterProps) {
           </div>
 
           <div>
-            <h4 className="mb-4">{copy.support}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h2 className="mb-4 text-sm font-semibold text-foreground">{copy.support}</h2>
+            <ul className="space-y-2 text-sm">
               <li>
-                <button
-                  className="transition-colors hover:text-primary"
-                  onClick={() => scrollToSection("faq-section")}
-                >
+                <button type="button" className={linkClass} onClick={() => scrollToSection("faq-section")}>
                   {copy.faq}
                 </button>
               </li>
               <li>
-                <button
-                  className="transition-colors hover:text-primary"
-                  onClick={() => scrollToSection("support-section")}
-                >
+                <button type="button" className={linkClass} onClick={() => scrollToSection("support-section")}>
                   {copy.help}
                 </button>
               </li>
               <li>
-                <button
-                  className="transition-colors hover:text-primary"
-                  onClick={() => openSupportEmail(copy.supportSubject)}
-                >
+                <button type="button" className={linkClass} onClick={() => openSupportEmail(copy.supportSubject)}>
                   {copy.contact}
                 </button>
               </li>
@@ -176,7 +177,7 @@ export function Footer({ onNavigate }: FooterProps) {
                   href="https://policies.google.com/privacy"
                   target="_blank"
                   rel="noreferrer"
-                  className="transition-colors hover:text-primary"
+                  className={cn(linkClass, "inline-block")}
                 >
                   {copy.privacy}
                 </a>
@@ -185,44 +186,49 @@ export function Footer({ onNavigate }: FooterProps) {
           </div>
 
           <div>
-            <h4 className="mb-4">{copy.connect}</h4>
-            <div className="flex gap-3">
+            <h2 className="mb-4 text-sm font-semibold text-foreground">{copy.connect}</h2>
+            <div className="flex gap-3" aria-label={copy.social}>
               <a
                 href="https://www.facebook.com/"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-white"
+                aria-label="Facebook"
+                className="interactive flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground outline-none transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <Facebook className="h-5 w-5" />
+                <Facebook className="h-5 w-5" aria-hidden="true" />
               </a>
               <a
                 href="https://www.instagram.com/"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-white"
+                aria-label="Instagram"
+                className="interactive flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground outline-none transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <Instagram className="h-5 w-5" />
+                <Instagram className="h-5 w-5" aria-hidden="true" />
               </a>
               <a
                 href="https://www.youtube.com/"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-white"
+                aria-label="YouTube"
+                className="interactive flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground outline-none transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <Youtube className="h-5 w-5" />
+                <Youtube className="h-5 w-5" aria-hidden="true" />
               </a>
               <button
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-white"
+                type="button"
+                aria-label={copy.contact}
+                className="interactive flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground outline-none transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => openSupportEmail(copy.feedbackSubject)}
               >
-                <Mail className="h-5 w-5" />
+                <Mail className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-          <p>(c) 2026 Qazaq Video Learn. {copy.rights}</p>
+        <div className="mt-8 border-t border-border/70 pt-8 text-center text-sm text-muted-foreground">
+          <p>© 2026 Qazaq Video Learn. {copy.rights}</p>
         </div>
       </div>
     </footer>

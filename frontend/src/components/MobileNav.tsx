@@ -3,6 +3,7 @@ import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
+import { cn } from "./ui/utils";
 
 interface MobileNavProps {
   currentPage: string;
@@ -22,6 +23,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate })
           studio: "Студия",
           profile: "Профиль",
           login: "Вход",
+          navigation: "Мобильная навигация",
         }
       : {
           home: "Басты бет",
@@ -30,6 +32,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate })
           studio: "Студия",
           profile: "Профиль",
           login: "Кіру",
+          navigation: "Мобильді навигация",
         };
 
   const navItems = [
@@ -46,8 +49,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate })
   ];
 
   return (
-    <nav className="safe-area-inset-bottom fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card md:hidden">
-      <div className="flex items-center justify-around py-2">
+    <nav
+      aria-label={copy.navigation}
+      className="safe-area-inset-bottom fixed inset-x-0 bottom-0 z-nav border-t border-border/80 bg-background/92 px-2 pb-2 pt-2 shadow-lg backdrop-blur-xl md:hidden"
+    >
+      <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentPage === item.page;
@@ -55,13 +61,19 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate })
           return (
             <button
               key={item.page}
+              type="button"
               onClick={() => onNavigate(item.page)}
-              className={`flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors ${
-                isActive ? "text-primary" : "text-muted-foreground"
-              }`}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "interactive flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium outline-none transition-[background-color,color,box-shadow]",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
             >
-              <Icon className="h-6 w-6" />
-              <span className="text-xs">{item.label}</span>
+              <Icon className="h-5 w-5" aria-hidden="true" />
+              <span className="max-w-full truncate">{item.label}</span>
             </button>
           );
         })}

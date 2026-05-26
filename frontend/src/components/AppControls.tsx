@@ -1,8 +1,8 @@
 import React from "react";
 import { Languages, MoonStar, SunMedium } from "lucide-react";
 
-import { Button } from "./ui/Button";
 import { useAppPreferences } from "../context/AppPreferencesContext";
+import { Button } from "./ui/Button";
 
 export function AppControls() {
   const { language, setLanguage, theme, toggleTheme, languageLabel } =
@@ -30,7 +30,7 @@ export function AppControls() {
         onClick={() => setLanguage(nextLanguage)}
         aria-label={copy.languageSwitch}
       >
-        <Languages className="h-4 w-4" />
+        <Languages className="h-4 w-4" aria-hidden="true" />
         {languageLabel(language)}
       </Button>
       <Button
@@ -42,9 +42,9 @@ export function AppControls() {
         aria-label={copy.themeSwitch}
       >
         {theme === "dark" ? (
-          <SunMedium className="h-4 w-4" />
+          <SunMedium className="h-4 w-4" aria-hidden="true" />
         ) : (
-          <MoonStar className="h-4 w-4" />
+          <MoonStar className="h-4 w-4" aria-hidden="true" />
         )}
       </Button>
     </div>

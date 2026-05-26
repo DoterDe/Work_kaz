@@ -1,10 +1,11 @@
 
   import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react-swc';
+  import tailwindcss from '@tailwindcss/vite';
   import path from 'path';
 
   export default defineConfig({
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -52,6 +53,18 @@
     build: {
       target: 'esnext',
       outDir: 'build',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('react') || id.includes('react-dom')) return 'react-vendor';
+            if (id.includes('framer-motion')) return 'motion-vendor';
+            if (id.includes('@radix-ui')) return 'radix-vendor';
+            if (id.includes('lucide-react')) return 'icons-vendor';
+            return 'vendor';
+          },
+        },
+      },
     },
     server: {
       port: 3000,

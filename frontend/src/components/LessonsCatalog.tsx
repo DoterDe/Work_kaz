@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Filter, SlidersHorizontal } from "lucide-react";
+import { Filter, SlidersHorizontal, Star } from "lucide-react";
 
 import api from "../api/axios";
 import { useAppPreferences } from "../context/AppPreferencesContext";
 import { extractApiErrorMessage } from "../utils/apiError";
+import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
+import { CardGlow } from "./ui/CardGlow";
 import { LessonCard } from "./ui/LessonCard";
 import { LevelBadge } from "./ui/LevelBadge";
 import { SearchInput } from "./ui/SearchInput";
+import { cn } from "./ui/utils";
 
 interface Lesson {
   id: number;
@@ -47,7 +50,8 @@ export function LessonsCatalog({ onNavigate }: Props) {
     language === "ru"
       ? {
           title: "Каталог видеоуроков",
-          subtitle: "Фильтруйте по уровню, теме и прогрессу, чтобы быстро найти следующий урок.",
+          subtitle:
+            "Фильтруйте по уровню, теме и прогрессу, чтобы быстро найти следующий урок.",
           lessons: "Уроки",
           started: "Начато",
           averageRating: "Средний рейтинг",
@@ -55,7 +59,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
           levelLabel: "Уровень",
           categoryLabel: "Тема",
           onlyStarted: "Только начатые уроки",
-          clearAll: "Сбросить всё",
+          clearAll: "Сбросить все",
           filters: "Фильтры",
           sortBy: "Сортировка",
           newest: "Сначала новые",
@@ -72,10 +76,12 @@ export function LessonsCatalog({ onNavigate }: Props) {
           activeCategory: "Тема",
           activeStarted: "Только начатые",
           activeSearch: "Поиск",
+          toggleFilters: "Показать фильтры",
         }
       : {
           title: "Бейнесабақтар каталогы",
-          subtitle: "Келесі сабақты тез табу үшін деңгейді, тақырыпты және прогресті сүзгіден өткізіңіз.",
+          subtitle:
+            "Келесі сабақты тез табу үшін деңгейді, тақырыпты және прогресті сүзгіден өткізіңіз.",
           lessons: "Сабақтар",
           started: "Басталған",
           averageRating: "Орташа рейтинг",
@@ -100,6 +106,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
           activeCategory: "Тақырып",
           activeStarted: "Тек басталғаны",
           activeSearch: "Іздеу",
+          toggleFilters: "Сүзгілерді көрсету",
         };
 
   const levels = ["A1", "A2", "B1", "B2"];
@@ -136,9 +143,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
         setLessons(response.data);
       } catch (error) {
         setLessons([]);
-        setRequestError(
-          extractApiErrorMessage(error, copy.fetchError)
-        );
+        setRequestError(extractApiErrorMessage(error, copy.fetchError));
       } finally {
         setLoading(false);
       }
@@ -149,7 +154,7 @@ export function LessonsCatalog({ onNavigate }: Props) {
 
   const displayedLessons = useMemo(
     () => (onlyStarted ? lessons.filter((lesson) => lesson.progress > 0) : lessons),
-    [lessons, onlyStarted]
+    [lessons, onlyStarted],
   );
 
   const stats = useMemo(() => {
@@ -183,30 +188,36 @@ export function LessonsCatalog({ onNavigate }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <section className="mb-8 rounded-[28px] border border-border bg-gradient-to-br from-card via-card to-primary/5 p-6">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <h1 className="mb-2">{copy.title}</h1>
-            <p className="text-muted-foreground">
-              {copy.subtitle}
-            </p>
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="mb-8">
+        <CardGlow className="p-6 sm:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
+                {copy.title}
+              </h1>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">{copy.subtitle}</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 sm:min-w-[360px]">
+              <Card padding="sm" className="text-center">
+                <p className="text-xs text-muted-foreground">{copy.lessons}</p>
+                <p className="text-xl font-semibold text-foreground">{stats.total}</p>
+              </Card>
+              <Card padding="sm" className="text-center">
+                <p className="text-xs text-muted-foreground">{copy.started}</p>
+                <p className="text-xl font-semibold text-foreground">{stats.started}</p>
+              </Card>
+              <Card padding="sm" className="text-center">
+                <p className="text-xs text-muted-foreground">{copy.averageRating}</p>
+                <p className="inline-flex items-center justify-center gap-1 text-xl font-semibold text-foreground">
+                  {stats.avgRating}
+                  <Star className="h-4 w-4 fill-warning text-warning" aria-hidden="true" />
+                </p>
+              </Card>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="rounded-2xl p-4 text-center">
-              <p className="text-xs text-muted-foreground">{copy.lessons}</p>
-              <p className="text-xl font-semibold">{stats.total}</p>
-            </Card>
-            <Card className="rounded-2xl p-4 text-center">
-              <p className="text-xs text-muted-foreground">{copy.started}</p>
-              <p className="text-xl font-semibold">{stats.started}</p>
-            </Card>
-            <Card className="rounded-2xl p-4 text-center">
-              <p className="text-xs text-muted-foreground">{copy.averageRating}</p>
-              <p className="text-xl font-semibold">{stats.avgRating}</p>
-            </Card>
-          </div>
-        </div>
+        </CardGlow>
       </section>
 
       <section className="mb-6">
@@ -217,53 +228,66 @@ export function LessonsCatalog({ onNavigate }: Props) {
             value={search}
             onChange={setSearch}
           />
-          <button
+          <Button
+            variant="outline"
+            size="icon"
+            className="md:hidden"
+            aria-label={copy.toggleFilters}
+            aria-expanded={showFilters}
             onClick={() => setShowFilters((prev) => !prev)}
-            className="rounded-xl border border-border bg-card px-4 py-3 md:hidden"
           >
-            <SlidersHorizontal size={18} />
-          </button>
+            <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
+          </Button>
         </div>
 
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-3 flex flex-wrap gap-2" aria-label={copy.levelLabel}>
           {levels.map((item) => (
-            <button key={item} onClick={() => setLevel(level === item ? null : item)}>
+            <button
+              key={item}
+              type="button"
+              aria-pressed={level === item}
+              onClick={() => setLevel(level === item ? null : item)}
+              className="interactive rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <LevelBadge level={item} size="md" />
             </button>
           ))}
         </div>
 
-        {activeFilters.length > 0 && (
+        {activeFilters.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
             {activeFilters.map((filter) => (
               <span
                 key={filter}
-                className="rounded-full border border-border bg-card px-3 py-1 text-xs"
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground"
               >
                 {filter}
               </span>
             ))}
-            <button className="text-sm text-primary hover:text-[#1557CC]" onClick={clearFilters}>
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
               {copy.clearAll}
-            </button>
+            </Button>
           </div>
-        )}
+        ) : null}
       </section>
 
       <div className="grid gap-8 lg:grid-cols-4">
-        <aside className={`lg:col-span-1 ${showFilters ? "block" : "hidden lg:block"}`}>
-          <Card className="space-y-6 rounded-[24px]">
+        <aside className={cn("lg:col-span-1", showFilters ? "block" : "hidden lg:block")}>
+          <Card className="space-y-6">
             <div>
               <div className="mb-3 flex items-center gap-2">
-                <Filter size={18} />
-                <h3>{copy.filters}</h3>
+                <Filter className="h-5 w-5 text-primary" aria-hidden="true" />
+                <h2 className="text-base font-semibold text-foreground">{copy.filters}</h2>
               </div>
 
-              <label className="mb-2 block text-sm text-muted-foreground">{copy.sortBy}</label>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground" htmlFor="lesson-sort">
+                {copy.sortBy}
+              </label>
               <select
+                id="lesson-sort"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="w-full rounded-xl border border-border bg-input-background px-3 py-2"
+                onChange={(event) => setSortBy(event.target.value as SortOption)}
+                className="h-11 w-full rounded-xl border border-border bg-input-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
               >
                 <option value="newest">{copy.newest}</option>
                 <option value="rating">{copy.rating}</option>
@@ -273,53 +297,59 @@ export function LessonsCatalog({ onNavigate }: Props) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm text-muted-foreground">{copy.categoryLabel}</label>
+              <h3 className="mb-2 text-sm font-medium text-muted-foreground">{copy.categoryLabel}</h3>
               <div className="space-y-2">
-                {categories.map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => setCategory(item === "All Topics" ? null : item)}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      category === item || (!category && item === "All Topics")
-                        ? "bg-primary text-white"
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    {item === "All Topics" ? copy.allTopics : translateCategory(item)}
-                  </button>
-                ))}
+                {categories.map((item) => {
+                  const active = category === item || (!category && item === "All Topics");
+
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setCategory(item === "All Topics" ? null : item)}
+                      className={cn(
+                        "interactive w-full rounded-xl border px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                        active
+                          ? "border-primary/25 bg-primary/10 text-primary"
+                          : "border-transparent text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      {item === "All Topics" ? copy.allTopics : translateCategory(item)}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div>
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={onlyStarted}
-                  onChange={(e) => setOnlyStarted(e.target.checked)}
-                />
-                {copy.onlyStarted}
-              </label>
-            </div>
+            <label className="interactive inline-flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={onlyStarted}
+                onChange={(event) => setOnlyStarted(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              />
+              {copy.onlyStarted}
+            </label>
           </Card>
         </aside>
 
         <main className="lg:col-span-3">
-          {requestError && (
-            <Card className="mb-6 rounded-[24px] border-destructive/20 bg-destructive/10 text-sm text-destructive">
+          {requestError ? (
+            <Card className="mb-6 border-destructive/20 bg-destructive/10 text-sm text-destructive">
               {requestError}
             </Card>
-          )}
+          ) : null}
 
           {loading ? (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="overflow-hidden rounded-[24px] p-0">
-                  <div className="h-40 animate-pulse bg-muted" />
+                <Card key={index} padding="none" className="overflow-hidden">
+                  <div className="h-40 animate-pulse bg-muted motion-reduce:animate-none" />
                   <div className="space-y-3 p-4">
-                    <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-                    <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-                    <div className="h-8 w-full animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                    <div className="h-8 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
                   </div>
                 </Card>
               ))}
@@ -346,15 +376,15 @@ export function LessonsCatalog({ onNavigate }: Props) {
             </>
           )}
 
-          {!loading && displayedLessons.length === 0 && (
-            <Card className="rounded-[24px] py-12 text-center">
-              <h3 className="mb-2">{copy.noLessons}</h3>
+          {!loading && displayedLessons.length === 0 ? (
+            <Card className="py-12 text-center">
+              <h3 className="mb-2 text-xl font-semibold text-foreground">{copy.noLessons}</h3>
               <p className="mb-5 text-muted-foreground">{copy.noLessonsDescription}</p>
-              <button className="text-primary hover:text-[#1557CC]" onClick={clearFilters}>
+              <Button variant="outline" onClick={clearFilters}>
                 {copy.resetFilters}
-              </button>
+              </Button>
             </Card>
-          )}
+          ) : null}
         </main>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Navigation } from "./components/Navigation";
 import { Footer } from "./components/Footer";
 import { MobileNav } from "./components/MobileNav";
+import { CustomCursor } from "./components/motion/CustomCursor";
 
 import { HomePage } from "./components/HomePage";
 import { VideoLessonPage } from "./components/VideoLessonPage";
@@ -182,10 +183,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <CustomCursor />
       <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
 
-      <main className="flex-1 pb-20 md:pb-0">
+      <main className="relative z-content flex-1 pb-20 md:pb-0">
         {visitedPages.map((page) => (
           <section
             key={page}
