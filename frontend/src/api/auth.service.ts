@@ -6,7 +6,7 @@ export interface TokenPair {
 }
 
 export interface LoginPayload {
-  login: string; 
+  username: string; 
   password: string;
 }
 

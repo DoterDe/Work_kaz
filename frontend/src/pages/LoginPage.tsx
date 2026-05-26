@@ -104,7 +104,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setLoading(true);
     try {
       const tokens = await authService.login({
-        login: identifier,
+        username: identifier,
         password,
       });
       await loginWithTokens(tokens);
