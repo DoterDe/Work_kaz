@@ -56,7 +56,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     setOpen(false);
   };
 
-  // ESC close
+  // Закрытие по Escape
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -71,27 +71,30 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       {open && (
         <div
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
+          aria-hidden="true"
         />
       )}
 
-      {/* Выдвигающаяся панель */}
+      {/* Выдвижная панель */}
       <aside
         className={cn(
-          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 bg-background border-l border-border/80 shadow-2xl transition-transform duration-300",
+          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 bg-background border-l border-border/80 shadow-2xl transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full"
         )}
+        aria-label="Мобильное меню"
       >
-        <div className="flex flex-col gap-1 p-3">
+        <div className="flex flex-col gap-1 p-3 overflow-y-auto h-full">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.page;
+
             return (
               <button
                 key={item.page}
                 onClick={() => handleNavigate(item.page)}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
+                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all",
                   isActive
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
