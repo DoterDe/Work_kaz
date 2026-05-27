@@ -13,55 +13,16 @@ import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
 
 /* =========================
-   TOP BAR (APPLE STYLE)
+   TOP NAVBAR (APPLE STYLE)
 ========================= */
 
-export function TopNavbar({
+function TopNavbar({
   isOpen,
   setIsOpen,
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
 }) {
-  const [hidden, setHidden] = React.useState(false);
-
-  const lastY = React.useRef(0);
-  const ticking = React.useRef(false);
-
-  React.useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-
-      if (!ticking.current) {
-        requestAnimationFrame(() => {
-          const diff = y - lastY.current;
-
-          // ignore micro scroll noise
-          if (Math.abs(diff) > 10) {
-            if (diff > 0 && y > 80 && !isOpen) {
-              setHidden(true);
-            } else {
-              setHidden(false);
-            }
-          }
-
-          lastY.current = y;
-          ticking.current = false;
-        });
-
-        ticking.current = true;
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isOpen]);
-
-  React.useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-  }, [isOpen]);
-
   return (
     <header
       style={{ zIndex: 2147483647 }}
@@ -70,19 +31,13 @@ export function TopNavbar({
       {/* glass background */}
       <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border-b border-white/10" />
 
-      {/* content */}
-      <div
-        className="relative h-full flex items-center justify-between px-4 max-w-6xl mx-auto transition-all duration-300"
-        style={{
-          transform:
-            hidden && !isOpen ? "translateY(-110%)" : "translateY(0)",
-          opacity: hidden && !isOpen ? 0 : 1,
-        }}
-      >
-        <div className="font-semibold text-lg tracking-tight text-white">
+      <div className="relative h-full flex items-center justify-between px-4 max-w-6xl mx-auto">
+        {/* LOGO */}
+        <div className="text-white font-semibold text-lg tracking-tight">
           AppName
         </div>
 
+        {/* BURGER */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-2 rounded-xl hover:bg-white/10 transition"
@@ -98,7 +53,7 @@ export function TopNavbar({
    BURGER MENU (FULL NAV INSIDE)
 ========================= */
 
-export function BurgerMenu({
+function BurgerMenu({
   isOpen,
   onClose,
   onNavigate,
@@ -147,10 +102,7 @@ export function BurgerMenu({
   }, [isOpen]);
 
   return (
-    <div
-      style={{ zIndex: 2147483646 }}
-      className="fixed inset-0"
-    >
+    <div style={{ zIndex: 2147483646 }} className="fixed inset-0">
       {/* BACKDROP */}
       <div
         onClick={onClose}
@@ -165,7 +117,7 @@ export function BurgerMenu({
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* NAV INSIDE */}
+        {/* NAV INSIDE MENU */}
         <div className="pt-20 px-6 flex flex-col gap-3 text-white">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -191,10 +143,10 @@ export function BurgerMenu({
 }
 
 /* =========================
-   APP LAYOUT (FINAL)
+   FULL SYSTEM LAYOUT
 ========================= */
 
-export default function AppNavigationSystem({
+export default function NavigationSystem({
   children,
   navigate,
 }: {
@@ -205,8 +157,10 @@ export default function AppNavigationSystem({
 
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* TOP NAVBAR ALWAYS VISIBLE */}
       <TopNavbar isOpen={isOpen} setIsOpen={setIsOpen} />
 
+      {/* BURGER MENU CONTAINS ALL NAVIGATION */}
       <BurgerMenu
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
@@ -216,7 +170,7 @@ export default function AppNavigationSystem({
         }}
       />
 
-      {/* PAGE */}
+      {/* PAGE CONTENT */}
       <main className="pt-16">{children}</main>
     </div>
   );
