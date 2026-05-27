@@ -1,99 +1,33 @@
 import React from "react";
-import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
-import { useAuth } from "../auth/AuthContext";
-import { useAppPreferences } from "../context/AppPreferencesContext";
-import { cn } from "./ui/utils";
+/* =========================
+   TOP NAVBAR (APPLE STYLE)
+========================= */
 
-interface MobileNavProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
-  isBurgerOpen?: boolean;
-}
-
-export const MobileNav: React.FC<MobileNavProps> = ({
-  currentPage,
-  onNavigate,
-  isBurgerOpen = false,
-}) => {
-  const { isAuthenticated, user } = useAuth();
-  const { language } = useAppPreferences();
-
-  const [visible, setVisible] = React.useState(true);
+export function TopNavbar({
+  isOpen,
+  setIsOpen,
+}: {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+}) {
+  const [hidden, setHidden] = React.useState(false);
 
   const lastY = React.useRef(0);
-  const velocity = React.useRef(0);
   const ticking = React.useRef(false);
 
-  const copy =
-    language === "ru"
-      ? {
-          home: "Главная",
-          lessons: "Уроки",
-          words: "Слова",
-          studio: "Студия",
-          profile: "Профиль",
-          login: "Вход",
-        }
-      : {
-          home: "Басты бет",
-          lessons: "Сабақтар",
-          words: "Сөздер",
-          studio: "Студия",
-          profile: "Профиль",
-          login: "Кіру",
-        };
-
-  const navItems = [
-    { icon: Home, label: copy.home, page: "home" },
-    ...(isAuthenticated
-      ? [
-          { icon: BookOpen, label: copy.lessons, page: "catalog" },
-          { icon: GraduationCap, label: copy.words, page: "vocabulary" },
-          ...(user?.is_content_manager
-            ? [{ icon: Sparkles, label: copy.studio, page: "studio" }]
-            : [{ icon: User, label: copy.profile, page: "dashboard" }]),
-        ]
-      : [{ icon: User, label: copy.login, page: "login" }]),
-  ];
-
-  // 🚫 lock when burger open
   React.useEffect(() => {
-    if (isBurgerOpen) {
-      setVisible(false);
-      return;
-    }
-    setVisible(true);
-  }, [isBurgerOpen]);
-
-  // 🧠 iOS-style scroll intelligence
-  React.useEffect(() => {
-    if (isBurgerOpen) return;
-
     const onScroll = () => {
       const y = window.scrollY;
 
-      const diff = y - lastY.current;
-      velocity.current = diff;
-
       if (!ticking.current) {
-        window.requestAnimationFrame(() => {
-          const absVelocity = Math.abs(velocity.current);
+        requestAnimationFrame(() => {
+          const diff = y - lastY.current;
 
-          // 🔥 ignore micro scroll (prevents jitter)
-          if (absVelocity < 4) {
-            ticking.current = false;
-            return;
-          }
-
-          // 📉 scrolling down fast → hide
-          if (velocity.current > 2 && y > 120) {
-            setVisible(false);
-          }
-
-          // 📈 scrolling up → show
-          if (velocity.current < -2) {
-            setVisible(true);
+          if (Math.abs(diff) > 8) {
+            if (diff > 0 && y > 80) setHidden(true);
+            else setHidden(false);
           }
 
           lastY.current = y;
@@ -107,51 +41,141 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isBurgerOpen]);
+  }, []);
 
-  const isHidden = !visible || isBurgerOpen;
+  React.useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+  }, [isOpen]);
 
   return (
-    <nav
-      style={{
-        zIndex: 2147483647,
-      }}
-      className="fixed inset-x-0 bottom-0 md:hidden pointer-events-none"
+    <header
+      style={{ zIndex: 2147483647 }}
+      className="fixed top-0 inset-x-0 h-14 md:h-16"
     >
-      {/* container NEVER affects layout */}
+      {/* glass layer */}
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border-b border-white/10" />
+
       <div
-        className="mx-auto max-w-md px-2 pb-2"
+        className="relative h-full flex items-center justify-between px-4 max-w-6xl mx-auto transition-all duration-300"
         style={{
-          opacity: isHidden ? 0 : 1,
-          transform: isHidden ? "translateY(120%)" : "translateY(0)",
-          transition: "opacity 0.25s ease, transform 0.25s ease",
-          pointerEvents: isHidden ? "none" : "auto",
+          transform:
+            hidden && !isOpen ? "translateY(-110%)" : "translateY(0)",
+          opacity: hidden && !isOpen ? 0 : 1,
         }}
       >
-        {/* visual nav only */}
-        <div className="grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl px-2 py-2 shadow-xl">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.page;
+        <div className="font-semibold text-lg text-white tracking-tight">
+          AppName
+        </div>
 
-            return (
-              <button
-                key={item.page}
-                onClick={() => onNavigate(item.page)}
-                className={cn(
-                  "interactive flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground"
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 rounded-xl hover:bg-white/10 transition"
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+/* =========================
+   FULL SCREEN MENU (APPLE)
+========================= */
+
+export function AppleMenu({
+  isOpen,
+  onClose,
+  onNavigate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (page: string) => void;
+}) {
+  React.useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+  }, [isOpen]);
+
+  return (
+    <div
+      style={{ zIndex: 2147483646 }}
+      className={`fixed inset-0 transition ${
+        isOpen ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+    >
+      {/* backdrop */}
+      <div
+        onClick={onClose}
+        className={`absolute inset-0 bg-black/40 backdrop-blur-xl transition-opacity duration-300 ${
+          isOpen ? "opacity-100" : "opacity-0"
+        }`}
+      />
+
+      {/* panel */}
+      <div
+        className={`absolute top-0 right-0 h-full w-full max-w-sm bg-white/10 backdrop-blur-2xl border-l border-white/10 shadow-2xl transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="p-6 flex flex-col gap-4 text-white">
+          <MenuItem label="Home" onClick={() => onNavigate("home")} />
+          <MenuItem label="Lessons" onClick={() => onNavigate("catalog")} />
+          <MenuItem label="Vocabulary" onClick={() => onNavigate("vocabulary")} />
+          <MenuItem label="Profile" onClick={() => onNavigate("dashboard")} />
         </div>
       </div>
-    </nav>
+    </div>
   );
-};
+}
+
+/* =========================
+   MENU ITEM
+========================= */
+
+function MenuItem({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-left text-lg py-3 px-3 rounded-xl hover:bg-white/10 transition"
+    >
+      {label}
+    </button>
+  );
+}
+
+/* =========================
+   APP LAYOUT EXAMPLE
+========================= */
+
+export default function AppLayout({
+  children,
+  navigate,
+}: {
+  children: React.ReactNode;
+  navigate: (page: string) => void;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <TopNavbar isOpen={isMenuOpen} setIsOpen={setIsMenuOpen} />
+
+      <AppleMenu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        onNavigate={(page) => {
+          navigate(page);
+          setIsMenuOpen(false);
+        }}
+      />
+
+      {/* page content */}
+      <main className="pt-16">{children}</main>
+    </div>
+  );
+}
