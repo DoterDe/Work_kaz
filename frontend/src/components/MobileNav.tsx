@@ -68,6 +68,23 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     setOpen(false);
   };
 
+  // Блокировка скролла body при открытом меню
+  useEffect(() => {
+    if (open) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      // Компенсация ширины скроллбара, чтобы страница не дёргалась
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = "";
+      };
+    }
+  }, [open]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -78,42 +95,45 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-      {/* 🔥 FIX WRAPPER (ключ к решению) */}
+      {/* Верхняя панель: при открытом меню фиксируется, чтобы не уезжала при скролле (который заблокирован) */}
       <div
         className={cn(
-          "w-full transition-all duration-200",
-          open && "fixed top-0 left-0 right-0 z-50"
+          "w-full transition-all duration-200 z-50",
+          open && "fixed top-0 left-0 right-0"
         )}
       >
-        {/* NAVBAR */}
         <header className="w-full bg-background border-b border-border/80">
           <div className="flex items-center justify-between h-14 px-4">
-            <button onClick={() => setOpen((v) => !v)}>
+            <button
+              onClick={() => setOpen((v) => !v)}
+              aria-label={open ? "Закрыть меню" : "Открыть меню"}
+            >
               {open ? "✕" : "☰"}
             </button>
-
             <div className="font-semibold">Logo</div>
           </div>
         </header>
       </div>
 
-      {/* компенсируем высоту когда fixed */}
+      {/* Компенсация высоты для фиксированной панели */}
       {open && <div className="h-14" />}
 
-      {/* OVERLAY */}
+      {/* Затемняющий оверлей */}
       {open && (
         <div
           onClick={() => setOpen(false)}
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          aria-hidden="true"
         />
       )}
 
-      {/* DRAWER */}
+      {/* Боковая шторка (drawer) */}
       <aside
         className={cn(
-          "fixed top-0 right-0 z-50 h-screen w-72 bg-background border-l border-border/80 shadow-2xl transform transition-transform duration-300",
+          "fixed top-0 right-0 z-50 h-screen w-72 bg-background border-l border-border/80 shadow-2xl transform transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full"
         )}
+        aria-label="Мобильное меню"
       >
         <div className="flex flex-col gap-1 p-3 pt-20 overflow-y-auto h-full">
           {navItems.map((item) => {
