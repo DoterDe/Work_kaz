@@ -56,8 +56,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       : [{ icon: User, label: copy.login, page: "login" }]),
   ];
 
-  // 📌 scroll hide/show logic
+  // 📌 scroll logic (disabled when burger open)
   React.useEffect(() => {
+    if (isBurgerOpen) return;
+
     let ticking = false;
 
     const handleScroll = () => {
@@ -66,9 +68,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       if (!ticking) {
         window.requestAnimationFrame(() => {
           if (currentY > lastScrollY.current && currentY > 80) {
-            setHidden(true); // вниз
+            setHidden(true);
           } else {
-            setHidden(false); // вверх
+            setHidden(false);
           }
 
           lastScrollY.current = currentY;
@@ -82,24 +84,27 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isBurgerOpen]);
 
-  const shouldHide = hidden || isBurgerOpen;
+  const isHidden = hidden || isBurgerOpen;
 
   return (
     <nav
       aria-label={copy.navigation}
       style={{
-        zIndex: 2147483647, // 💥 always on top
+        zIndex: 2147483647,
       }}
       className="safe-area-inset-bottom fixed inset-x-0 bottom-0 border-t border-border/80 bg-background/92 px-2 pb-2 pt-2 shadow-lg backdrop-blur-xl md:hidden"
     >
+      {/* INNER WRAPPER controls animation WITHOUT affecting layout */}
       <div
-        style={{
-          transform: shouldHide ? "translateY(120%)" : "translateY(0)",
-          transition: "transform 0.25s ease",
-        }}
         className="mx-auto grid max-w-md grid-cols-4 gap-1"
+        style={{
+          transform: isHidden ? "translateY(120%)" : "translateY(0)",
+          opacity: isHidden ? 0 : 1,
+          pointerEvents: isHidden ? "none" : "auto",
+          transition: "transform 0.25s ease, opacity 0.2s ease",
+        }}
       >
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -112,15 +117,14 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               onClick={() => onNavigate(item.page)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "interactive flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium outline-none transition-[background-color,color,box-shadow]",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "interactive flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium outline-none transition",
                 isActive
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <Icon className="h-5 w-5" aria-hidden="true" />
-              <span className="max-w-full truncate">{item.label}</span>
+              <Icon className="h-5 w-5" />
+              <span className="truncate">{item.label}</span>
             </button>
           );
         })}
