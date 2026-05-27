@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -8,7 +8,9 @@ import {
   PlayCircle,
   RefreshCw,
   Trophy,
+  Home,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import api from "../api/axios";
 import { useAppPreferences } from "../context/AppPreferencesContext";
@@ -20,6 +22,7 @@ import { LevelBadge } from "./ui/LevelBadge";
 import { ProgressBar } from "./ui/ProgressBar";
 import { cn } from "./ui/utils";
 
+// -------------------------------- Типы ----------------------------------
 interface VideoLessonPageProps {
   onNavigate: (page: string) => void;
   lesson: {
@@ -87,6 +90,39 @@ interface SubmitResult {
   review: ReviewItem[];
 }
 
+// --------------------------------- Звуки ---------------------------------
+const playUiSound = (type: "click" | "submit" | "success") => {
+  if (typeof window === "undefined") return;
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const gainNode = audioContext.createGain();
+  gainNode.gain.value = 0.15;
+  gainNode.connect(audioContext.destination);
+
+  const oscillator = audioContext.createOscillator();
+  oscillator.connect(gainNode);
+
+  switch (type) {
+    case "click":
+      oscillator.frequency.value = 880;
+      oscillator.type = "sine";
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.15);
+      break;
+    case "submit":
+      oscillator.frequency.value = 440;
+      oscillator.type = "square";
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+      break;
+    case "success":
+      oscillator.frequency.value = 1046.5; // C6
+      oscillator.type = "sine";
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+      break;
+  }
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.2);
+};
+
+// ---------------------------- Главный компонент ---------------------------
 export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const { language, formatMinutes } = useAppPreferences();
   const isRu = language === "ru";
@@ -123,6 +159,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         notPassed: "Тест пока не пройден",
         example: "Пример",
         video: "Видео",
+        goHome: "На главную",
       }
     : {
         back: "Каталогқа оралу",
@@ -156,8 +193,10 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         notPassed: "Тесттен әлі өтпедіңіз",
         example: "Мысал",
         video: "Видео",
+        goHome: "Басты бетке",
       };
 
+  // Состояния
   const [lessonData, setLessonData] = useState<LessonResponse | null>(null);
   const [words, setWords] = useState<VocabularyWord[]>([]);
   const [testData, setTestData] = useState<TestResponse | null>(null);
@@ -169,7 +208,47 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<"video" | "vocab" | "test">("video");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [player, setPlayer] = useState<any>(null);
+  const [videoProgress, setVideoProgress] = useState(0);
 
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+
+  // Инициализация YouTube API и автоматическое отслеживание прогресса
+  useEffect(() => {
+    if (!youtubeId) return;
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName("script")[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    (window as any).onYouTubeIframeAPIReady = () => {
+      const newPlayer = new (window as any).YT.Player("youtube-player", {
+        events: {
+          onReady: (event: any) => {
+            setPlayer(event.target);
+          },
+          onStateChange: (event: any) => {
+            if (event.data === (window as any).YT.PlayerState.PLAYING) {
+              const interval = setInterval(() => {
+                if (!event.target) return;
+                const current = event.target.getCurrentTime();
+                const duration = event.target.getDuration();
+                if (duration && current / duration >= 0.9 && !videoWatched) {
+                  clearInterval(interval);
+                  markWatchedAutomatically();
+                }
+              }, 1000);
+              return () => clearInterval(interval);
+            }
+          },
+        },
+      });
+    };
+  }, [youtubeId]);
+
+  // Загрузка данных
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -183,14 +262,11 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         setLessonData(detailRes.data);
         setWords(wordsRes.data);
         setTestData(testRes.data);
-        setVideoWatched(
-          window.localStorage.getItem(`lesson-${lesson.id}-video`) === "true" ||
-            detailRes.data.progress >= 30,
-        );
+        const videoFlag = window.localStorage.getItem(`lesson-${lesson.id}-video`) === "true";
+        setVideoWatched(videoFlag || detailRes.data.progress >= 30);
         const reviewed: Record<number, boolean> = {};
         wordsRes.data.forEach((word) => {
-          reviewed[word.id] =
-            window.localStorage.getItem(`lesson-${lesson.id}-word-${word.id}`) === "true";
+          reviewed[word.id] = window.localStorage.getItem(`lesson-${lesson.id}-word-${word.id}`) === "true";
         });
         setWordsReviewed(reviewed);
       } catch (requestError) {
@@ -200,7 +276,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
       }
     };
     void load();
-  }, [lesson.id, t.loadError]);
+  }, [lesson.id]);
 
   const reviewedCount = Object.values(wordsReviewed).filter(Boolean).length;
   const wordsProgress = words.length ? (reviewedCount / words.length) * 100 : 100;
@@ -235,17 +311,25 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     }
   }, [lessonData, progress]);
 
-  const markWatched = async () => {
+  const markWatchedAutomatically = async () => {
+    if (videoWatched) return;
     window.localStorage.setItem(`lesson-${lesson.id}-video`, "true");
     setVideoWatched(true);
     await saveProgress(Math.max(30, lessonData?.progress || 0), false);
   };
 
+  const handleWordReview = (wordId: number) => {
+    playUiSound("click");
+    window.localStorage.setItem(`lesson-${lesson.id}-word-${word.id}`, "true");
+    setWordsReviewed((prev) => ({ ...prev, [wordId]: true }));
+  };
+
   const submitTest = async () => {
-    if (!testData || testData.questions.some((question) => !answers[question.id])) {
+    if (!testData || testData.questions.some((q) => !answers[q.id])) {
       setError(t.submitError);
       return;
     }
+    playUiSound("submit");
     setSubmitting(true);
     setError("");
     try {
@@ -256,12 +340,29 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         })),
       });
       setResult(response.data);
+      playUiSound("success");
     } catch (requestError) {
       setError(extractApiErrorMessage(requestError, t.submitError));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const handleAnswer = (questionId: number, optionId: number) => {
+    playUiSound("click");
+    setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+    // Автоматический переход к следующему вопросу через 0.3 сек
+    if (currentQuestionIndex + 1 < (testData?.questions.length || 0)) {
+      setTimeout(() => {
+        setCurrentQuestionIndex((i) => i + 1);
+      }, 300);
+    }
+  };
+
+  const scrollTo = useCallback((section: "video" | "vocab" | "test") => {
+    const el = document.getElementById(section);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   if (loading) {
     return (
@@ -280,6 +381,9 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const duration = lessonData?.duration_minutes || lesson.duration_minutes || lesson.duration || 0;
   const youtubeId = lessonData?.youtube_id || lesson.youtube_id || "";
 
+  const currentQuestion = testData?.questions[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex + 1 === (testData?.question_count || 0);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Button variant="ghost" className="mb-6 gap-2" onClick={() => onNavigate("catalog")}>
@@ -293,65 +397,58 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         </Card>
       ) : null}
 
+      {/* Степпер */}
+      <div className="mb-6 flex justify-between gap-2 border-b border-border pb-2">
+        {(["video", "vocab", "test"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => {
+              if (tab === "vocab" && !videoWatched) return;
+              if (tab === "test" && reviewedCount !== words.length) return;
+              setActiveTab(tab);
+              scrollTo(tab);
+            }}
+            className={cn(
+              "flex-1 rounded-xl py-2 text-center font-medium transition",
+              activeTab === tab
+                ? "bg-primary/10 text-primary"
+                : videoWatched || tab === "video"
+                ? "text-muted-foreground hover:bg-muted"
+                : "cursor-not-allowed text-muted-foreground/30",
+            )}
+          >
+            {tab === "video" && t.video}
+            {tab === "vocab" && t.words}
+            {tab === "test" && t.test}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1.65fr_0.95fr]">
-        <div>
-          <CardGlow className="mb-5 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-3xl">
-                <h1 className="mb-3 text-3xl font-semibold leading-tight text-foreground lg:text-4xl">
-                  {title}
-                </h1>
-                <div className="mb-3 flex items-center gap-3 text-sm text-muted-foreground">
-                  <LevelBadge level={level} />
-                  <span>{formatMinutes(duration)}</span>
-                </div>
-                <p className="leading-7 text-muted-foreground">{description}</p>
-              </div>
-              <div className="min-w-[220px] rounded-2xl border border-primary/15 bg-background/70 p-4">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span>{t.steps}</span>
-                  <span className="font-semibold text-primary">{progress}%</span>
-                </div>
-                <ProgressBar progress={progress} color="primary" />
-                {saving ? <p className="mt-3 text-xs text-muted-foreground">{t.saving}</p> : null}
-              </div>
-            </div>
-          </CardGlow>
-
-          <Card padding="none" className="mb-5 overflow-hidden">
-            <div className="relative aspect-video bg-black">
-              {youtubeId ? (
-                <iframe
-                  src={`https://www.youtube.com/embed/${youtubeId}?modestbranding=1&rel=0`}
-                  title={title}
-                  className="h-full w-full"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center px-6 text-center text-white/80">
-                  {t.noVideo}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <Button
-                variant={videoWatched ? "primary" : "outline"}
-                onClick={() => void markWatched()}
-                disabled={videoWatched}
-                className="gap-2"
-              >
-                {videoWatched ? (
-                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+        <div id="video" className="scroll-mt-24">
+          {/* Видео с эмбиент-свечением */}
+          <div className="relative mb-5" ref={videoContainerRef}>
+            <div className="absolute -inset-10 z-0 bg-gradient-to-tr from-primary/30 via-secondary/20 to-transparent blur-[100px] opacity-60 pointer-events-none" />
+            <CardGlow className="relative z-10 p-0 overflow-hidden">
+              <div className="aspect-video bg-black">
+                {youtubeId ? (
+                  <iframe
+                    id="youtube-player"
+                    src={`https://www.youtube.com/embed/${youtubeId}?modestbranding=1&rel=0&enablejsapi=1`}
+                    title={title}
+                    className="h-full w-full"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                  />
                 ) : (
-                  <PlayCircle className="h-4 w-4" aria-hidden="true" />
+                  <div className="flex h-full items-center justify-center text-white/80">{t.noVideo}</div>
                 )}
-                {videoWatched ? t.watched : t.mark}
-              </Button>
-            </div>
-          </Card>
+              </div>
+            </CardGlow>
+          </div>
 
-          <Card className="mb-5">
+          {/* Словарь (интерактивные карточки с tilt-эффектом) */}
+          <div id="vocab" className="scroll-mt-24">
             <h2 className="mb-4 text-2xl font-semibold text-foreground">{t.words}</h2>
             {words.length === 0 ? (
               <div className="rounded-2xl bg-muted/30 p-6 text-center text-muted-foreground">
@@ -360,61 +457,55 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {words.map((word) => (
-                  <div
+                  <CardGlow
                     key={word.id}
                     className={cn(
-                      "rounded-2xl border p-4 transition-colors",
-                      wordsReviewed[word.id]
-                        ? "border-secondary/30 bg-secondary/5"
-                        : "border-border bg-background/50",
+                      "transition-all duration-200",
+                      wordsReviewed[word.id] && "border-secondary/30 bg-secondary/5",
                     )}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3 p-4">
                       <div className="flex-1">
                         <h3 className="text-xl font-semibold text-foreground">{word.word}</h3>
                         <p className="text-sm text-muted-foreground">{word.pronunciation || "-"}</p>
                         <p className="mt-2 font-medium text-foreground">{word.translation}</p>
-                        {word.example ? (
+                        {word.example && (
                           <div className="mt-3 rounded-xl bg-muted/40 p-3 text-sm">
-                            <p className="mb-1 text-xs uppercase text-muted-foreground">
-                              {t.example}
-                            </p>
+                            <p className="mb-1 text-xs uppercase text-muted-foreground">{t.example}</p>
                             <p>{word.example}</p>
                           </div>
-                        ) : null}
+                        )}
                       </div>
                       <Button
                         variant={wordsReviewed[word.id] ? "primary" : "ghost"}
                         size="sm"
                         disabled={wordsReviewed[word.id]}
                         aria-label={word.word}
-                        onClick={() => {
-                          window.localStorage.setItem(`lesson-${lesson.id}-word-${word.id}`, "true");
-                          setWordsReviewed((prev) => ({ ...prev, [word.id]: true }));
-                        }}
+                        onClick={() => handleWordReview(word.id)}
                       >
                         <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
-                  </div>
+                  </CardGlow>
                 ))}
               </div>
             )}
-            {words.length > 0 && reviewedCount === words.length ? (
-              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+            {reviewedCount === words.length && words.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
                 {t.ready}
               </div>
-            ) : null}
-          </Card>
+            )}
+          </div>
 
-          <Card className="mb-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+          {/* Тест – по одному вопросу */}
+          <div id="test" className="scroll-mt-24">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-semibold text-foreground">{t.test}</h2>
-              {testData ? (
-                <span className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
-                  {t.answered}: {Object.keys(answers).length}/{testData.question_count}
-                </span>
-              ) : null}
+              {testData && (
+                <div className="text-sm text-muted-foreground">
+                  {t.passThreshold}: {testData.pass_threshold}%
+                </div>
+              )}
             </div>
             {!testData || testData.question_count === 0 ? (
               <div className="rounded-2xl bg-muted/30 p-6 text-center text-muted-foreground">
@@ -422,64 +513,62 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
               </div>
             ) : (
               <>
-                <div className="mb-4 text-sm text-muted-foreground">
-                  {t.passThreshold}: {testData.pass_threshold}%
-                </div>
-                <div className="space-y-4">
-                  {testData.questions.map((question, index) => (
-                    <div key={question.id} className="rounded-2xl border border-border p-4">
-                      <p className="mb-3 font-medium text-foreground">
-                        {index + 1}. {question.question_text}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentQuestionIndex}
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -20, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <CardGlow className="p-6">
+                      <p className="mb-4 text-lg font-medium text-foreground">
+                        {currentQuestionIndex + 1}. {currentQuestion?.question_text}
                       </p>
-                      <div className="space-y-2">
-                        {question.options.map((option) => (
+                      <div className="space-y-3">
+                        {currentQuestion?.options.map((opt) => (
                           <button
-                            key={option.id}
-                            type="button"
-                            onClick={() =>
-                              setAnswers((prev) => ({ ...prev, [question.id]: option.id }))
-                            }
+                            key={opt.id}
+                            onClick={() => handleAnswer(currentQuestion.id, opt.id)}
                             className={cn(
-                              "interactive w-full rounded-xl border px-4 py-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                              answers[question.id] === option.id
+                              "w-full rounded-xl border px-5 py-3 text-left transition-all hover:bg-muted",
+                              answers[currentQuestion.id] === opt.id
                                 ? "border-primary bg-primary/10 text-primary"
-                                : "border-border hover:bg-muted",
+                                : "border-border",
                             )}
                           >
-                            {option.option_text}
+                            {opt.option_text}
                           </button>
                         ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => void submitTest()}
-                    disabled={submitting}
-                    loading={submitting}
-                    loadingText={t.checking}
-                    className="gap-2"
-                  >
-                    <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
-                    {t.submit}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setAnswers({});
-                      setResult(null);
-                    }}
-                  >
-                    {t.reset}
-                  </Button>
+                    </CardGlow>
+                  </motion.div>
+                </AnimatePresence>
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex gap-2">
+                    {Array.from({ length: testData.question_count }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "h-2 w-6 rounded-full transition-all",
+                          idx <= currentQuestionIndex ? "bg-primary" : "bg-border",
+                        )}
+                      />
+                    ))}
+                  </div>
+                  {isLastQuestion && (
+                    <Button onClick={() => void submitTest()} disabled={submitting} loading={submitting}>
+                      {t.submit}
+                    </Button>
+                  )}
                 </div>
               </>
             )}
-          </Card>
+          </div>
 
-          {result ? (
-            <Card>
+          {/* Результаты теста */}
+          {result && (
+            <Card className="mt-5">
               <div
                 className={cn(
                   "mb-5 rounded-2xl border p-5 text-center",
@@ -499,13 +588,12 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                   {result.passed ? t.passed : t.notPassed}
                 </h2>
                 <p>
-                  {t.result}: {result.score_percent}% ({result.correct_answers}/
-                  {result.total_questions})
+                  {t.result}: {result.score_percent}% ({result.correct_answers}/{result.total_questions})
                 </p>
               </div>
               <h3 className="mb-4 text-xl font-semibold text-foreground">{t.review}</h3>
               <div className="space-y-4">
-                {result.review.map((item, index) => (
+                {result.review.map((item, idx) => (
                   <div
                     key={item.question_id}
                     className={cn(
@@ -516,71 +604,95 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                     )}
                   >
                     <p className="mb-3 font-medium text-foreground">
-                      {index + 1}. {item.question_text}
+                      {idx + 1}. {item.question_text}
                     </p>
                     <div className="space-y-2 text-sm">
                       <p>
                         <span className="text-muted-foreground">{t.answer}: </span>
-                        <span className={item.is_correct ? "font-medium text-secondary" : "font-medium text-destructive"}>
+                        <span
+                          className={item.is_correct ? "font-medium text-secondary" : "font-medium text-destructive"}
+                        >
                           {item.selected_option_text || t.noAnswer}
                         </span>
                       </p>
-                      {!item.is_correct ? (
+                      {!item.is_correct && (
                         <p>
                           <span className="text-muted-foreground">{t.correct}: </span>
-                          <span className="font-medium text-secondary">
-                            {item.correct_option_text}
-                          </span>
+                          <span className="font-medium text-secondary">{item.correct_option_text}</span>
                         </p>
-                      ) : null}
-                      {item.explanation ? (
+                      )}
+                      {item.explanation && (
                         <div className="rounded-xl bg-muted/40 p-3">
-                          <p className="mb-1 text-xs uppercase text-muted-foreground">
-                            {t.explanation}
-                          </p>
+                          <p className="mb-1 text-xs uppercase text-muted-foreground">{t.explanation}</p>
                           <p>{item.explanation}</p>
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-              {!result.passed ? (
+              {!result.passed && (
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Button
                     variant="outline"
                     onClick={() => {
                       setAnswers({});
                       setResult(null);
+                      setCurrentQuestionIndex(0);
                     }}
-                    className="gap-2"
                   >
-                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     {t.retry}
                   </Button>
                 </div>
-              ) : null}
+              )}
+              {progress >= 100 && (
+                <div className="mt-6 text-center">
+                  <Button onClick={() => onNavigate("home")} variant="primary" className="gap-2">
+                    <Home className="h-4 w-4" />
+                    {t.goHome}
+                  </Button>
+                </div>
+              )}
             </Card>
-          ) : null}
+          )}
         </div>
 
+        {/* Сайдбар с прогрессом и быстрыми переходами */}
         <aside className="space-y-5">
           <Card className="sticky top-24">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span>{t.video}</span>
-              <span>{videoWatched ? "100%" : "0%"}</span>
+            <div className="space-y-4">
+              <div>
+                <button
+                  onClick={() => scrollTo("video")}
+                  className="flex w-full items-center justify-between text-sm hover:text-primary"
+                >
+                  <span>{t.video}</span>
+                  <span>{videoWatched ? "100%" : "0%"}</span>
+                </button>
+                <ProgressBar progress={videoWatched ? 100 : 0} color="primary" />
+              </div>
+              <div>
+                <button
+                  onClick={() => scrollTo("vocab")}
+                  className="flex w-full items-center justify-between text-sm hover:text-primary"
+                >
+                  <span>{t.words}</span>
+                  <span>{Math.round(wordsProgress)}%</span>
+                </button>
+                <ProgressBar progress={wordsProgress} color="secondary" />
+              </div>
+              <div>
+                <button
+                  onClick={() => scrollTo("test")}
+                  className="flex w-full items-center justify-between text-sm hover:text-primary"
+                >
+                  <span>{t.test}</span>
+                  <span>{result ? `${Math.round(result.score_percent)}%` : "0%"}</span>
+                </button>
+                <ProgressBar progress={result ? result.score_percent : 0} color="primary" />
+              </div>
             </div>
-            <ProgressBar progress={videoWatched ? 100 : 0} color="primary" />
-            <div className="mb-2 mt-4 flex items-center justify-between text-sm">
-              <span>{t.words}</span>
-              <span>{Math.round(wordsProgress)}%</span>
-            </div>
-            <ProgressBar progress={wordsProgress} color="secondary" />
-            <div className="mb-2 mt-4 flex items-center justify-between text-sm">
-              <span>{t.test}</span>
-              <span>{result ? `${Math.round(result.score_percent)}%` : "0%"}</span>
-            </div>
-            <ProgressBar progress={result ? result.score_percent : 0} color="primary" />
+            {saving && <p className="mt-3 text-xs text-muted-foreground">{t.saving}</p>}
           </Card>
         </aside>
       </div>
