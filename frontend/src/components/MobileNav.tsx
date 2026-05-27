@@ -20,7 +20,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   const { language } = useAppPreferences();
 
   const [visible, setVisible] = React.useState(true);
-  const lastScrollY = React.useRef(0);
+
+  const lastY = React.useRef(0);
+  const velocity = React.useRef(0);
+  const ticking = React.useRef(false);
 
   const copy =
     language === "ru"
@@ -31,7 +34,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           studio: "Студия",
           profile: "Профиль",
           login: "Вход",
-          navigation: "Мобильная навигация",
         }
       : {
           home: "Басты бет",
@@ -40,7 +42,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           studio: "Студия",
           profile: "Профиль",
           login: "Кіру",
-          navigation: "Мобильді навигация",
         };
 
   const navItems = [
@@ -56,43 +57,50 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       : [{ icon: User, label: copy.login, page: "login" }]),
   ];
 
-  // 🚫 LOCK when burger open
+  // 🚫 lock when burger open
   React.useEffect(() => {
     if (isBurgerOpen) {
       setVisible(false);
       return;
     }
-
     setVisible(true);
   }, [isBurgerOpen]);
 
-  // 📌 stable scroll logic (NO jitter)
+  // 🧠 iOS-style scroll intelligence
   React.useEffect(() => {
     if (isBurgerOpen) return;
-
-    let ticking = false;
 
     const onScroll = () => {
       const y = window.scrollY;
 
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const diff = y - lastScrollY.current;
+      const diff = y - lastY.current;
+      velocity.current = diff;
 
-          // 🔥 ignore micro scroll (fix jitter)
-          if (Math.abs(diff) > 10) {
-            if (diff > 0 && y > 80) {
-              setVisible(false);
-            } else {
-              setVisible(true);
-            }
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const absVelocity = Math.abs(velocity.current);
+
+          // 🔥 ignore micro scroll (prevents jitter)
+          if (absVelocity < 4) {
+            ticking.current = false;
+            return;
           }
 
-          lastScrollY.current = y;
-          ticking = false;
+          // 📉 scrolling down fast → hide
+          if (velocity.current > 2 && y > 120) {
+            setVisible(false);
+          }
+
+          // 📈 scrolling up → show
+          if (velocity.current < -2) {
+            setVisible(true);
+          }
+
+          lastY.current = y;
+          ticking.current = false;
         });
 
-        ticking = true;
+        ticking.current = true;
       }
     };
 
@@ -101,42 +109,48 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     return () => window.removeEventListener("scroll", onScroll);
   }, [isBurgerOpen]);
 
+  const isHidden = !visible || isBurgerOpen;
+
   return (
     <nav
-      aria-label={copy.navigation}
       style={{
         zIndex: 2147483647,
       }}
-      className="safe-area-inset-bottom fixed inset-x-0 bottom-0 border-t border-border/80 bg-background/90 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 md:hidden pointer-events-none"
     >
-      {/* 👇 IMPORTANT: ONLY opacity, NO transform layout issues */}
+      {/* container NEVER affects layout */}
       <div
-        className="mx-auto grid max-w-md grid-cols-4 gap-1 px-2 pb-2 pt-2 transition-opacity duration-200"
+        className="mx-auto max-w-md px-2 pb-2"
         style={{
-          opacity: visible ? 1 : 0,
-          pointerEvents: visible ? "auto" : "none",
+          opacity: isHidden ? 0 : 1,
+          transform: isHidden ? "translateY(120%)" : "translateY(0)",
+          transition: "opacity 0.25s ease, transform 0.25s ease",
+          pointerEvents: isHidden ? "none" : "auto",
         }}
       >
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.page;
+        {/* visual nav only */}
+        <div className="grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl px-2 py-2 shadow-xl">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPage === item.page;
 
-          return (
-            <button
-              key={item.page}
-              onClick={() => onNavigate(item.page)}
-              className={cn(
-                "interactive flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="truncate">{item.label}</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={item.page}
+                onClick={() => onNavigate(item.page)}
+                className={cn(
+                  "interactive flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
