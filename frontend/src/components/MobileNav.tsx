@@ -30,6 +30,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   const { language } = useAppPreferences();
 
   const [open, setOpen] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   const copy =
     language === "ru"
@@ -68,22 +69,28 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     setOpen(false);
   };
 
-  // Блокировка скролла body при открытом меню
+  // Управление скроллом и позицией навбара
   useEffect(() => {
     if (open) {
-      const originalOverflow = document.body.style.overflow;
+      // Сохраняем текущую позицию скролла
+      setScrollPosition(window.scrollY);
+      // Прокручиваем страницу наверх, чтобы фиксированная панель оказалась вверху окна
+      window.scrollTo(0, 0);
+      // Блокируем скролл страницы
       document.body.style.overflow = "hidden";
-      // Компенсация ширины скроллбара, чтобы страница не дёргалась
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-      }
-      return () => {
-        document.body.style.overflow = originalOverflow;
-        document.body.style.paddingRight = "";
-      };
+    } else {
+      // Восстанавливаем скролл и позицию
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollPosition);
     }
-  }, [open]);
+
+    return () => {
+      // Очистка при размонтировании (если меню осталось открытым)
+      if (open) {
+        document.body.style.overflow = "";
+      }
+    };
+  }, [open, scrollPosition]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -95,13 +102,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-      {/* Верхняя панель: при открытом меню фиксируется, чтобы не уезжала при скролле (который заблокирован) */}
-      <div
-        className={cn(
-          "w-full transition-all duration-200 z-50",
-          open && "fixed top-0 left-0 right-0"
-        )}
-      >
+      {/* Навбар теперь всегда статичный (не фиксируется), но страница прокручивается наверх при открытии, поэтому он остаётся на месте */}
+      <div className="w-full z-50">
         <header className="w-full bg-background border-b border-border/80">
           <div className="flex items-center justify-between h-14 px-4">
             <button
@@ -114,9 +116,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           </div>
         </header>
       </div>
-
-      {/* Компенсация высоты для фиксированной панели */}
-      {open && <div className="h-14" />}
 
       {/* Затемняющий оверлей */}
       {open && (
