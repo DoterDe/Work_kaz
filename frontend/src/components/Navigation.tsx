@@ -89,7 +89,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
-      setAtTop(currentScrollY <= 10);
+      setAtTop(currentScrollY <= 12);
 
       if (currentScrollY < lastScrollY.current - 5) {
         setVisible(true);
@@ -137,26 +137,27 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      {/* spacer */}
+      {/* SPACER */}
       <div className="h-20" />
 
       <motion.header
         initial={false}
         animate={{
           y: visible ? 0 : -120,
-          opacity: visible ? 1 : 0.92,
+          opacity: visible ? 1 : 0.98,
         }}
         transition={{
-          duration: prefersReducedMotion ? 0 : 0.28,
+          duration: prefersReducedMotion ? 0 : 0.32,
           ease: [0.22, 1, 0.36, 1],
         }}
         className={cn(
-          "fixed left-0 top-0 z-[9999] w-full transition-all duration-300",
+          "fixed left-0 top-0 w-full transition-all duration-300",
           atTop
             ? "bg-transparent"
-            : "border-b border-border/60 bg-background/78 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)]",
+            : "border-b border-border/50 bg-background/70 backdrop-blur-3xl shadow-[0_12px_40px_rgba(0,0,0,0.16)]",
         )}
         style={{
+          zIndex: 99990,
           pointerEvents: "auto",
         }}
       >
@@ -168,45 +169,66 @@ export const Navigation: React.FC<NavigationProps> = ({
           <button
             type="button"
             onClick={() => onNavigate("home")}
-            className="interactive group relative flex items-center justify-center outline-none"
+            className="interactive group relative mr-3 flex items-center justify-center outline-none"
             style={{
-              perspective: "1200px",
+              perspective: "1600px",
+              zIndex: 999999,
             }}
           >
             <motion.div
               whileHover={{
                 rotateY: 360,
-                rotateX: 12,
-                scale: 1.08,
+                rotateX: 14,
+                scale: 1.12,
               }}
               transition={{
-                duration: 1.2,
-                ease: "easeInOut",
+                duration: 1.25,
+                ease: [0.22, 1, 0.36, 1],
               }}
-              className="relative flex h-14 w-14 items-center justify-center"
+              className="relative flex h-16 w-16 items-center justify-center"
               style={{
                 transformStyle: "preserve-3d",
+                zIndex: 999999,
               }}
             >
+              {/* glow */}
               <div
-                className={cn(
-                  "absolute inset-0 rounded-2xl blur-xl transition-opacity duration-500",
-                  "bg-primary/30 opacity-70 group-hover:opacity-100",
-                )}
+                className="
+                  absolute inset-0 rounded-[26px]
+                  bg-primary/20 blur-2xl
+                  opacity-80 transition-all duration-500
+                  group-hover:scale-125
+                  group-hover:opacity-100
+                "
               />
 
+              {/* transparent case */}
               <div
-                className={cn(
-                  "relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border",
-                  "border-white/10 bg-white/[0.06] backdrop-blur-xl",
-                  "shadow-[0_8px_40px_rgba(0,0,0,0.25)]",
-                )}
+                className="
+                  relative flex h-16 w-16 items-center justify-center
+                  rounded-[26px]
+                  border border-white/10
+                  bg-transparent
+                  shadow-[0_12px_50px_rgba(0,0,0,0.35)]
+                  backdrop-blur-md
+                  transition-all duration-500
+                  group-hover:shadow-[0_20px_70px_rgba(59,130,246,0.35)]
+                "
               >
                 <img
                   src="/logo-q.png"
                   alt="Q"
-                  className="h-9 w-9 object-contain select-none"
                   draggable={false}
+                  className="
+                    h-14 w-14
+                    object-contain
+                    select-none
+                    transition-transform duration-500
+                    group-hover:scale-110
+                  "
+                  style={{
+                    pointerEvents: "none",
+                  }}
                 />
               </div>
             </motion.div>
