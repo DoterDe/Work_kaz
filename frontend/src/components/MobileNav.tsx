@@ -73,20 +73,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-      {/* TOP BAR */}
-      <header className="fixed top-0 inset-x-0 z-nav border-b border-border/80 bg-background/90 backdrop-blur-xl">
-        <div className="flex h-14 items-center justify-between px-4">
-          <div className="font-semibold text-foreground">Menu</div>
-
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted transition"
-            aria-label="Menu"
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </header>
 
       {/* OVERLAY */}
       {open && (
