@@ -2,7 +2,7 @@ import React from "react";
 import { Menu, X } from "lucide-react";
 
 /* =========================
-   TOP NAVBAR (APPLE STYLE)
+   TOP NAVBAR (SAFE APPLE STYLE)
 ========================= */
 
 export function TopNavbar({
@@ -18,16 +18,22 @@ export function TopNavbar({
   const ticking = React.useRef(false);
 
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const onScroll = () => {
       const y = window.scrollY;
 
       if (!ticking.current) {
-        requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           const diff = y - lastY.current;
 
-          if (Math.abs(diff) > 8) {
-            if (diff > 0 && y > 80) setHidden(true);
-            else setHidden(false);
+          // smooth threshold (prevents jitter)
+          if (Math.abs(diff) > 10) {
+            if (diff > 0 && y > 80) {
+              setHidden(true);
+            } else {
+              setHidden(false);
+            }
           }
 
           lastY.current = y;
@@ -44,17 +50,22 @@ export function TopNavbar({
   }, []);
 
   React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
     document.body.style.overflow = isOpen ? "hidden" : "";
   }, [isOpen]);
 
   return (
     <header
-      style={{ zIndex: 2147483647 }}
+      style={{
+        zIndex: 2147483647,
+      }}
       className="fixed top-0 inset-x-0 h-14 md:h-16"
     >
-      {/* glass layer */}
+      {/* glass background */}
       <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border-b border-white/10" />
 
+      {/* content */}
       <div
         className="relative h-full flex items-center justify-between px-4 max-w-6xl mx-auto transition-all duration-300"
         style={{
@@ -63,7 +74,7 @@ export function TopNavbar({
           opacity: hidden && !isOpen ? 0 : 1,
         }}
       >
-        <div className="font-semibold text-lg text-white tracking-tight">
+        <div className="font-semibold text-lg tracking-tight text-white">
           AppName
         </div>
 
@@ -79,7 +90,7 @@ export function TopNavbar({
 }
 
 /* =========================
-   FULL SCREEN MENU (APPLE)
+   FULL SCREEN MENU (SAFE)
 ========================= */
 
 export function AppleMenu({
@@ -92,30 +103,26 @@ export function AppleMenu({
   onNavigate: (page: string) => void;
 }) {
   React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
     document.body.style.overflow = isOpen ? "hidden" : "";
   }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div
       style={{ zIndex: 2147483646 }}
-      className={`fixed inset-0 transition ${
-        isOpen ? "pointer-events-auto" : "pointer-events-none"
-      }`}
+      className="fixed inset-0"
     >
       {/* backdrop */}
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-black/40 backdrop-blur-xl transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0"
-        }`}
+        className="absolute inset-0 bg-black/40 backdrop-blur-xl"
       />
 
       {/* panel */}
-      <div
-        className={`absolute top-0 right-0 h-full w-full max-w-sm bg-white/10 backdrop-blur-2xl border-l border-white/10 shadow-2xl transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
+      <div className="absolute top-0 right-0 h-full w-full max-w-sm bg-white/10 backdrop-blur-2xl border-l border-white/10 shadow-2xl animate-slide">
         <div className="p-6 flex flex-col gap-4 text-white">
           <MenuItem label="Home" onClick={() => onNavigate("home")} />
           <MenuItem label="Lessons" onClick={() => onNavigate("catalog")} />
@@ -123,6 +130,17 @@ export function AppleMenu({
           <MenuItem label="Profile" onClick={() => onNavigate("dashboard")} />
         </div>
       </div>
+
+      {/* animation */}
+      <style>{`
+        @keyframes slide {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide {
+          animation: slide 0.25s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
@@ -149,7 +167,7 @@ function MenuItem({
 }
 
 /* =========================
-   APP LAYOUT EXAMPLE
+   APP LAYOUT (SAFE ENTRY)
 ========================= */
 
 export default function AppLayout({
@@ -159,22 +177,21 @@ export default function AppLayout({
   children: React.ReactNode;
   navigate: (page: string) => void;
 }) {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <TopNavbar isOpen={isMenuOpen} setIsOpen={setIsMenuOpen} />
+      <TopNavbar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       <AppleMenu
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
         onNavigate={(page) => {
           navigate(page);
-          setIsMenuOpen(false);
+          setIsOpen(false);
         }}
       />
 
-      {/* page content */}
       <main className="pt-16">{children}</main>
     </div>
   );
