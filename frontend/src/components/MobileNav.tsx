@@ -78,33 +78,27 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-      {/* NAVBAR */}
-      <header
+      {/* 🔥 FIX WRAPPER (ключ к решению) */}
+      <div
         className={cn(
-          "w-full bg-background border-b border-border/80 transition-all duration-300",
-          open
-            ? "fixed top-0 left-0 right-0 z-50 shadow-lg"
-            : "relative"
+          "w-full transition-all duration-200",
+          open && "fixed top-0 left-0 right-0 z-50"
         )}
       >
-        <div className="flex items-center justify-between h-14 px-4">
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className="p-2"
-          >
-            {open ? (
-              <span className="text-xl">✕</span>
-            ) : (
-              <span className="text-xl">☰</span>
-            )}
-          </button>
+        {/* NAVBAR */}
+        <header className="w-full bg-background border-b border-border/80">
+          <div className="flex items-center justify-between h-14 px-4">
+            <button onClick={() => setOpen((v) => !v)}>
+              {open ? "✕" : "☰"}
+            </button>
 
-          <div className="font-semibold">Logo</div>
-        </div>
-      </header>
+            <div className="font-semibold">Logo</div>
+          </div>
+        </header>
+      </div>
 
-      {/* компенсация высоты когда fixed */}
-      <div className={open ? "h-14" : ""} />
+      {/* компенсируем высоту когда fixed */}
+      {open && <div className="h-14" />}
 
       {/* OVERLAY */}
       {open && (
