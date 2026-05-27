@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen, GraduationCap, Home, Sparkles, User, Menu, X } from "lucide-react";
+import {
+  BookOpen,
+  GraduationCap,
+  Home,
+  Sparkles,
+  User,
+} from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
@@ -62,7 +68,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     setOpen(false);
   };
 
-  // ESC close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -73,6 +78,33 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
+      {/* NAVBAR */}
+      <header
+        className={cn(
+          "w-full bg-background border-b border-border/80 transition-all duration-300",
+          open
+            ? "fixed top-0 left-0 right-0 z-50 shadow-lg"
+            : "relative"
+        )}
+      >
+        <div className="flex items-center justify-between h-14 px-4">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="p-2"
+          >
+            {open ? (
+              <span className="text-xl">✕</span>
+            ) : (
+              <span className="text-xl">☰</span>
+            )}
+          </button>
+
+          <div className="font-semibold">Logo</div>
+        </div>
+      </header>
+
+      {/* компенсация высоты когда fixed */}
+      <div className={open ? "h-14" : ""} />
 
       {/* OVERLAY */}
       {open && (
@@ -85,11 +117,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       {/* DRAWER */}
       <aside
         className={cn(
-          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 transform bg-background border-l border-border/80 shadow-2xl transition-transform duration-300",
+          "fixed top-0 right-0 z-50 h-screen w-72 bg-background border-l border-border/80 shadow-2xl transform transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <div className="flex flex-col gap-1 p-3">
+        <div className="flex flex-col gap-1 p-3 pt-20 overflow-y-auto h-full">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.page;
