@@ -1,69 +1,29 @@
-import React from "react";
-import {
-  Menu,
-  X,
-  Home,
-  BookOpen,
-  GraduationCap,
-  Sparkles,
-  User,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { BookOpen, GraduationCap, Home, Sparkles, User, Menu, X } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
+import { cn } from "./ui/utils";
 
-/* =========================
-   TOP NAVBAR (APPLE STYLE)
-========================= */
-
-function TopNavbar({
-  isOpen,
-  setIsOpen,
-}: {
-  isOpen: boolean;
-  setIsOpen: (v: boolean) => void;
-}) {
-  return (
-    <header
-      style={{ zIndex: 2147483647 }}
-      className="fixed top-0 inset-x-0 h-14 md:h-16"
-    >
-      {/* glass background */}
-      <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border-b border-white/10" />
-
-      <div className="relative h-full flex items-center justify-between px-4 max-w-6xl mx-auto">
-        {/* LOGO */}
-        <div className="text-white font-semibold text-lg tracking-tight">
-          AppName
-        </div>
-
-        {/* BURGER */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="p-2 rounded-xl hover:bg-white/10 transition"
-        >
-          {isOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
-    </header>
-  );
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  page: string;
 }
 
-/* =========================
-   BURGER MENU (FULL NAV INSIDE)
-========================= */
-
-function BurgerMenu({
-  isOpen,
-  onClose,
-  onNavigate,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
+interface MobileNavProps {
+  currentPage: string;
   onNavigate: (page: string) => void;
-}) {
+}
+
+export const MobileNav: React.FC<MobileNavProps> = ({
+  currentPage,
+  onNavigate,
+}) => {
   const { isAuthenticated, user } = useAuth();
   const { language } = useAppPreferences();
+
+  const [open, setOpen] = useState(false);
 
   const copy =
     language === "ru"
@@ -84,7 +44,7 @@ function BurgerMenu({
           login: "Кіру",
         };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { icon: Home, label: copy.home, page: "home" },
     ...(isAuthenticated
       ? [
@@ -97,81 +57,75 @@ function BurgerMenu({
       : [{ icon: User, label: copy.login, page: "login" }]),
   ];
 
-  React.useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-  }, [isOpen]);
+  const handleNavigate = (page: string) => {
+    onNavigate(page);
+    setOpen(false);
+  };
+
+  // ESC close
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
-    <div style={{ zIndex: 2147483646 }} className="fixed inset-0">
-      {/* BACKDROP */}
-      <div
-        onClick={onClose}
-        className={`absolute inset-0 bg-black/50 backdrop-blur-xl transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      />
+    <>
+      {/* TOP BAR */}
+      <header className="fixed top-0 inset-x-0 z-nav border-b border-border/80 bg-background/90 backdrop-blur-xl">
+        <div className="flex h-14 items-center justify-between px-4">
+          <div className="font-semibold text-foreground">Menu</div>
 
-      {/* PANEL */}
-      <div
-        className={`absolute top-0 right-0 h-full w-full max-w-sm bg-white/10 backdrop-blur-3xl border-l border-white/10 shadow-2xl transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted transition"
+            aria-label="Menu"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* OVERLAY */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        />
+      )}
+
+      {/* DRAWER */}
+      <aside
+        className={cn(
+          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 transform bg-background border-l border-border/80 shadow-2xl transition-transform duration-300",
+          open ? "translate-x-0" : "translate-x-full"
+        )}
       >
-        {/* NAV INSIDE MENU */}
-        <div className="pt-20 px-6 flex flex-col gap-3 text-white">
+        <div className="flex flex-col gap-1 p-3">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isActive = currentPage === item.page;
 
             return (
               <button
                 key={item.page}
-                onClick={() => {
-                  onNavigate(item.page);
-                  onClose();
-                }}
-                className="flex items-center gap-3 text-lg py-3 px-4 rounded-xl hover:bg-white/10 transition"
+                onClick={() => handleNavigate(item.page)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="h-5 w-5" />
                 {item.label}
               </button>
             );
           })}
         </div>
-      </div>
-    </div>
+      </aside>
+    </>
   );
-}
-
-/* =========================
-   FULL SYSTEM LAYOUT
-========================= */
-
-export default function NavigationSystem({
-  children,
-  navigate,
-}: {
-  children: React.ReactNode;
-  navigate: (page: string) => void;
-}) {
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  return (
-    <div className="min-h-screen bg-black text-white">
-      {/* TOP NAVBAR ALWAYS VISIBLE */}
-      <TopNavbar isOpen={isOpen} setIsOpen={setIsOpen} />
-
-      {/* BURGER MENU CONTAINS ALL NAVIGATION */}
-      <BurgerMenu
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        onNavigate={(page) => {
-          navigate(page);
-          setIsOpen(false);
-        }}
-      />
-
-      {/* PAGE CONTENT */}
-      <main className="pt-16">{children}</main>
-    </div>
-  );
-}
+};
