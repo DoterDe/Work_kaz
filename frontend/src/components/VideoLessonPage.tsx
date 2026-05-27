@@ -16,6 +16,7 @@ import {
 import api from "../api/axios";
 import { useAppPreferences } from "../context/AppPreferencesContext";
 import { extractApiErrorMessage } from "../utils/apiError";
+import { useAuth } from "../auth/AuthContext";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { CardGlow } from "./ui/CardGlow";
@@ -94,7 +95,7 @@ interface SubmitResult {
 
 type LessonStep = "video" | "words" | "quiz";
 
-// ─── localStorage helpers (safe) ──────────────────────────────────────────
+// ─── localStorage helpers (safe, with userId) ──────────────────────────────
 
 function lsGet(key: string): string | null {
   try { return window.localStorage.getItem(key); } catch { return null; }
@@ -114,6 +115,8 @@ function lsGetJson<T>(key: string): T | null {
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
+  const { user } = useAuth();
+  const userId = user?.id || "anonymous";
   const { language, formatMinutes } = useAppPreferences();
   const isRu = language === "ru";
 
@@ -219,19 +222,18 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadedForLessonId, setLoadedForLessonId] = useState<number | null>(null);
 
-  const loadedForLessonId = useRef<number | null>(null);
-
-  // localStorage keys
-  const lsKeyVideo   = `lesson-${lesson.id}-video`;
-  const lsKeyAnswers = `lesson-${lesson.id}-answers`;
-  const lsKeyResult  = `lesson-${lesson.id}-result`;
-  const lsKeyWord    = (wId: number) => `lesson-${lesson.id}-word-${wId}`;
+  // localStorage keys – уникальны для каждого пользователя
+  const lsKeyVideo   = `lesson-${userId}-${lesson.id}-video`;
+  const lsKeyAnswers = `lesson-${userId}-${lesson.id}-answers`;
+  const lsKeyResult  = `lesson-${userId}-${lesson.id}-result`;
+  const lsKeyWord    = (wId: number) => `lesson-${userId}-${lesson.id}-word-${wId}`;
 
   // ─── Data loading ────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      loadedForLessonId.current = null;
+      setLoadedForLessonId(null);
       setResult(null);
       setAnswers({});
       setVideoWatched(false);
@@ -253,23 +255,21 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         setWords(wordsRes.data);
         setTestData(testRes.data);
 
-        // Video watched
-        setVideoWatched(
-          lsGet(lsKeyVideo) === "true" || detailRes.data.progress >= 30,
-        );
+        // Сервер — источник истины для прогресса
+        setVideoWatched(detailRes.data.progress >= 30);
 
-        // Words reviewed
+        // Восстанавливаем флаги изученных слов из localStorage (только для текущего userId)
         const reviewed: Record<number, boolean> = {};
         wordsRes.data.forEach((word) => {
           reviewed[word.id] = lsGet(lsKeyWord(word.id)) === "true";
         });
         setWordsReviewed(reviewed);
 
-        // Answers & result from localStorage
+        // Восстанавливаем сохранённые ответы и результат (тоже с привязкой к userId)
         setAnswers(lsGetJson<Record<number, number>>(lsKeyAnswers) ?? {});
         setResult(lsGetJson<SubmitResult>(lsKeyResult));
 
-        loadedForLessonId.current = lesson.id;
+        setLoadedForLessonId(lesson.id);
       } catch (requestError) {
         setError(extractApiErrorMessage(requestError, t.loadError));
       } finally {
@@ -277,26 +277,23 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
       }
     };
     void load();
-  }, [lesson.id, t.loadError]);
+  }, [lesson.id, userId]);
 
-  // Persist answers
+  // ─── Persist answers to localStorage (только если загружены данные этого урока) ───
   useEffect(() => {
-    if (
-      loadedForLessonId.current === lesson.id &&
-      Object.keys(answers).length > 0
-    ) {
+    if (loadedForLessonId === lesson.id && Object.keys(answers).length > 0) {
       lsSet(lsKeyAnswers, JSON.stringify(answers));
     }
-  }, [answers]);
+  }, [answers, loadedForLessonId, lesson.id]);
 
   // Progress calculation
-  const reviewedCount  = Object.values(wordsReviewed).filter(Boolean).length;
-  const wordsProgress  = words.length ? (reviewedCount / words.length) * 100 : 100;
+  const reviewedCount = Object.values(wordsReviewed).filter(Boolean).length;
+  const wordsProgress = words.length ? (reviewedCount / words.length) * 100 : 100;
 
   const progress = useMemo(() => {
     const videoPart = videoWatched ? 30 : 0;
     const wordsPart = words.length ? (reviewedCount / words.length) * 20 : 20;
-    const testPart  = result?.passed
+    const testPart = result?.passed
       ? 50
       : result ? Math.min(50, result.score_percent * 0.5) : 0;
     return Math.min(100, Math.round(videoPart + wordsPart + testPart));
@@ -329,14 +326,12 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     }
   }, [lessonData, progress]);
 
-  // Mark video watched
   const markWatched = async () => {
     lsSet(lsKeyVideo, "true");
     setVideoWatched(true);
     await saveProgress(Math.max(30, lessonData?.progress ?? 0), false);
   };
 
-  // Reset test
   const resetTest = () => {
     setAnswers({});
     setResult(null);
@@ -346,7 +341,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     lsRemove(lsKeyResult);
   };
 
-  // Submit test
   const submitTest = async () => {
     if (!testData) return;
     if (testData.questions.some((q) => !answers[q.id])) {
@@ -374,7 +368,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     }
   };
 
-  // ─── Loading ─────────────────────────────────────────────────────────────
+  // ─── Loading screen ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
@@ -386,26 +380,29 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     );
   }
 
-  const title       = lessonData?.title        || lesson.title        || "Lesson";
-  const description = lessonData?.description  || lesson.description  || "";
-  const level       = lessonData?.level        || lesson.level        || "A1";
-  const duration    = lessonData?.duration_minutes || lesson.duration_minutes || lesson.duration || 0;
-  const youtubeId   = lessonData?.youtube_id   || lesson.youtube_id   || "";
+  const title = lessonData?.title || lesson.title || "Lesson";
+  const description = lessonData?.description || lesson.description || "";
+  const level = lessonData?.level || lesson.level || "A1";
+  const duration =
+    lessonData?.duration_minutes || lesson.duration_minutes || lesson.duration || 0;
+  const youtubeId = lessonData?.youtube_id || lesson.youtube_id || "";
 
-  const validQIds       = new Set(testData?.questions.map((q) => q.id) ?? []);
-  const answeredCount   = Object.keys(answers).filter((id) => validQIds.has(Number(id))).length;
-  const totalQuestions  = testData?.questions.length ?? 0;
-  const currentQ        = testData?.questions[currentQuestion] ?? null;
-  const allAnswered     = totalQuestions > 0 && answeredCount === totalQuestions;
+  const validQIds = new Set(testData?.questions.map((q) => q.id) ?? []);
+  const answeredCount = Object.keys(answers).filter((id) =>
+    validQIds.has(Number(id))
+  ).length;
+  const totalQuestions = testData?.questions.length ?? 0;
+  const currentQ = testData?.questions[currentQuestion] ?? null;
+  const allAnswered = totalQuestions > 0 && answeredCount === totalQuestions;
 
   const videoComplete = videoWatched;
   const wordsComplete = words.length === 0 || reviewedCount === words.length;
-  const quizComplete  = result !== null;
+  const quizComplete = result !== null;
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Ambient glow – нет overflow hidden, не ломает sticky */}
+      {/* Ambient glow */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-20 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/15 blur-[140px]"
@@ -425,9 +422,9 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
       {/* Step tabs */}
       <div className="mb-8 flex flex-wrap gap-3">
         {[
-          { key: "video" as LessonStep, label: t.cinema,     done: videoComplete },
+          { key: "video" as LessonStep, label: t.cinema, done: videoComplete },
           { key: "words" as LessonStep, label: t.vocabulary, done: wordsComplete },
-          { key: "quiz"  as LessonStep, label: t.mastery,    done: quizComplete  },
+          { key: "quiz" as LessonStep, label: t.mastery, done: quizComplete },
         ].map((item) => (
           <button
             key={item.key}
@@ -452,7 +449,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         {/* MAIN CONTENT */}
         <div>
           <AnimatePresence mode="wait">
-            {/* VIDEO STEP */}
             {step === "video" && (
               <motion.div
                 key="video"
@@ -470,7 +466,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                 <CardGlow className="relative overflow-visible p-6">
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-primary/20 via-fuchsia-500/10 to-cyan-500/15 blur-[100px]" />
                   <div className="relative z-10">
-                    <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div className="mb-5 flex-wrap items-start justify-between gap-4">
                       <div className="max-w-3xl">
                         <h1 className="mb-3 text-3xl font-semibold leading-tight text-foreground lg:text-4xl">
                           {title}
@@ -491,7 +487,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                       </div>
                     </div>
 
-                    {/* YouTube iframe – кросс-браузерные атрибуты */}
                     <div className="overflow-visible rounded-[2rem] border border-white/10 shadow-2xl">
                       {youtubeId ? (
                         <iframe
@@ -538,7 +533,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
               </motion.div>
             )}
 
-            {/* WORDS STEP */}
             {step === "words" && (
               <motion.div
                 key="words"
@@ -652,7 +646,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
               </motion.div>
             )}
 
-            {/* QUIZ STEP */}
             {step === "quiz" && (
               <motion.div
                 key="quiz"
@@ -682,7 +675,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                         </div>
                       </div>
 
-                      {/* Dot indicators */}
                       <div className="mb-6 flex flex-wrap gap-2">
                         {testData.questions.map((q, idx) => (
                           <button
@@ -702,7 +694,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                         ))}
                       </div>
 
-                      {/* Question card */}
                       {currentQ && (
                         <AnimatePresence mode="wait">
                           <motion.div
@@ -748,7 +739,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                         </AnimatePresence>
                       )}
 
-                      {/* Navigation */}
                       <div className="mt-6 flex items-center justify-between gap-3">
                         <Button
                           variant="outline"
@@ -773,7 +763,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                         </Button>
                       </div>
 
-                      {/* Submit / Reset */}
                       <div className="mt-6 flex flex-wrap gap-3">
                         <Button
                           onClick={() => void submitTest()}
@@ -797,7 +786,6 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                   )}
                 </CardGlow>
 
-                {/* Result block (appears only after API response) */}
                 {result && (
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
@@ -821,9 +809,11 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                         )}
                       >
                         <div className="mb-4 flex justify-center">
-                          {result.passed
-                            ? <Trophy className="h-12 w-12 text-emerald-400" aria-hidden="true" />
-                            : <AlertCircle className="h-12 w-12 text-destructive" aria-hidden="true" />}
+                          {result.passed ? (
+                            <Trophy className="h-12 w-12 text-emerald-400" aria-hidden="true" />
+                          ) : (
+                            <AlertCircle className="h-12 w-12 text-destructive" aria-hidden="true" />
+                          )}
                         </div>
                         <h2 className="mb-3 text-3xl font-bold text-foreground">
                           {result.passed ? t.passed : t.notPassed}
@@ -863,7 +853,9 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                             <div className="space-y-2 text-sm">
                               <p>
                                 <span className="text-muted-foreground">{t.answer}: </span>
-                                <span className={item.is_correct ? "font-medium text-secondary" : "font-medium text-destructive"}>
+                                <span
+                                  className={item.is_correct ? "font-medium text-secondary" : "font-medium text-destructive"}
+                                >
                                   {item.selected_option_text || t.noAnswer}
                                 </span>
                               </p>
@@ -891,7 +883,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
           </AnimatePresence>
         </div>
 
-        {/* ─── SIDEBAR (фикс sticky без overflow hidden) ─────────────────── */}
+        {/* SIDEBAR (sticky) */}
         <aside className="space-y-5 lg:sticky lg:top-28">
           <Card className="rounded-[2rem] border-border/60 bg-card/70 p-5 backdrop-blur-xl">
             <div className="mb-5 flex items-center justify-between">
@@ -901,9 +893,9 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
             <ProgressBar progress={progress} color="primary" />
             <div className="mt-6 space-y-4">
               {[
-                { key: "video" as LessonStep, label: t.video,  value: videoWatched ? 100 : 0 },
-                { key: "words" as LessonStep, label: t.words,  value: Math.round(wordsProgress) },
-                { key: "quiz"  as LessonStep, label: t.test,   value: result ? Math.round(result.score_percent) : 0 },
+                { key: "video" as LessonStep, label: t.video, value: videoWatched ? 100 : 0 },
+                { key: "words" as LessonStep, label: t.words, value: Math.round(wordsProgress) },
+                { key: "quiz" as LessonStep, label: t.test, value: result ? Math.round(result.score_percent) : 0 },
               ].map((item) => (
                 <button
                   key={item.key}
