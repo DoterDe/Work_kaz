@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen, GraduationCap, Home, Sparkles, User, Menu, X } from "lucide-react";
+import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
@@ -62,6 +62,19 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     setOpen(false);
   };
 
+  // 🔒 LOCK BODY SCROLL when menu open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   // ESC close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -73,7 +86,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-
       {/* OVERLAY */}
       {open && (
         <div
@@ -85,31 +97,35 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       {/* DRAWER */}
       <aside
         className={cn(
-          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 transform bg-background border-l border-border/80 shadow-2xl transition-transform duration-300",
+          "fixed top-0 right-0 z-50 h-full w-72 bg-background border-l border-border/80 shadow-2xl",
+          "transform transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <div className="flex flex-col gap-1 p-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.page;
+        {/* 👇 IMPORTANT: internal scroll container */}
+        <div className="h-full overflow-y-auto overscroll-contain p-3">
+          <div className="flex flex-col gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.page;
 
-            return (
-              <button
-                key={item.page}
-                onClick={() => handleNavigate(item.page)}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={item.page}
+                  onClick={() => handleNavigate(item.page)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </aside>
     </>
