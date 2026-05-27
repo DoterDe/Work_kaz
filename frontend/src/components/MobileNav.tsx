@@ -1,50 +1,44 @@
-import React, { useEffect, useState } from "react";
-import { BookOpen, GraduationCap, Home, Sparkles, User, Menu, X } from "lucide-react";
-
+import React, { useEffect } from "react";
+import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
 import { cn } from "./ui/utils";
 
-interface NavItem {
-  icon: React.ElementType;
-  label: string;
-  page: string;
-}
-
 interface MobileNavProps {
   currentPage: string;
   onNavigate: (page: string) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
 export const MobileNav: React.FC<MobileNavProps> = ({
   currentPage,
   onNavigate,
+  open,
+  setOpen,
 }) => {
   const { isAuthenticated, user } = useAuth();
   const { language } = useAppPreferences();
 
-  const [open, setOpen] = useState(false);
+  const copy = language === "ru"
+    ? {
+        home: "Главная",
+        lessons: "Уроки",
+        words: "Слова",
+        studio: "Студия",
+        profile: "Профиль",
+        login: "Вход",
+      }
+    : {
+        home: "Басты бет",
+        lessons: "Сабақтар",
+        words: "Сөздер",
+        studio: "Студия",
+        profile: "Профиль",
+        login: "Кіру",
+      };
 
-  const copy =
-    language === "ru"
-      ? {
-          home: "Главная",
-          lessons: "Уроки",
-          words: "Слова",
-          studio: "Студия",
-          profile: "Профиль",
-          login: "Вход",
-        }
-      : {
-          home: "Басты бет",
-          lessons: "Сабақтар",
-          words: "Сөздер",
-          studio: "Студия",
-          profile: "Профиль",
-          login: "Кіру",
-        };
-
-  const navItems: NavItem[] = [
+  const navItems = [
     { icon: Home, label: copy.home, page: "home" },
     ...(isAuthenticated
       ? [
@@ -69,12 +63,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [setOpen]);
 
   return (
     <>
-
-      {/* OVERLAY */}
+      {/* Затемняющий оверлей */}
       {open && (
         <div
           onClick={() => setOpen(false)}
@@ -82,10 +75,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         />
       )}
 
-      {/* DRAWER */}
+      {/* Выдвигающаяся панель */}
       <aside
         className={cn(
-          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 transform bg-background border-l border-border/80 shadow-2xl transition-transform duration-300",
+          "fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 bg-background border-l border-border/80 shadow-2xl transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -93,7 +86,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.page;
-
             return (
               <button
                 key={item.page}
