@@ -22,7 +22,6 @@ import { LevelBadge } from "./ui/LevelBadge";
 import { ProgressBar } from "./ui/ProgressBar";
 import { cn } from "./ui/utils";
 
-// -------------------------------- Типы ----------------------------------
 interface VideoLessonPageProps {
   onNavigate: (page: string) => void;
   lesson: {
@@ -90,39 +89,6 @@ interface SubmitResult {
   review: ReviewItem[];
 }
 
-// --------------------------------- Звуки ---------------------------------
-const playUiSound = (type: "click" | "submit" | "success") => {
-  if (typeof window === "undefined") return;
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.15;
-  gainNode.connect(audioContext.destination);
-
-  const oscillator = audioContext.createOscillator();
-  oscillator.connect(gainNode);
-
-  switch (type) {
-    case "click":
-      oscillator.frequency.value = 880;
-      oscillator.type = "sine";
-      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.15);
-      break;
-    case "submit":
-      oscillator.frequency.value = 440;
-      oscillator.type = "square";
-      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
-      break;
-    case "success":
-      oscillator.frequency.value = 1046.5; // C6
-      oscillator.type = "sine";
-      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-      break;
-  }
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + 0.2);
-};
-
-// ---------------------------- Главный компонент ---------------------------
 export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const { language, formatMinutes } = useAppPreferences();
   const isRu = language === "ru";
@@ -199,7 +165,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   // Состояния
   const [lessonData, setLessonData] = useState<LessonResponse | null>(null);
   const [words, setWords] = useState<VocabularyWord[]>([]);
-  const [testData, setTestData] = useState<TestResponse | null>(null);
+  const [testData, setTestData] | null = useState<TestResponse | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [wordsReviewed, setWordsReviewed] = useState<Record<number, boolean>>({});
@@ -213,42 +179,96 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const [player, setPlayer] = useState<any>(null);
   const [videoProgress, setVideoProgress] = useState(0);
 
+  // Реф для звукового контекста (один на весь компонент)
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  // Инициализация YouTube API и автоматическое отслеживание прогресса
-  useEffect(() => {
-    if (!youtubeId) return;
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    const firstScriptTag = document.getElementsByTagName("script")[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+  // Вспомогательные переменные (должны быть до условных вызовов)
+  const youtubeId = lessonData?.youtube_id || lesson.youtube_id || "";
+  const title = lessonData?.title || lesson.title || "Lesson";
+  const description = lessonData?.description || lesson.description || "";
+  const level = lessonData?.level || lesson.level || "A1";
+  const duration = lessonData?.duration_minutes || lesson.duration_minutes || lesson.duration || 0;
 
-    (window as any).onYouTubeIframeAPIReady = () => {
-      const newPlayer = new (window as any).YT.Player("youtube-player", {
-        events: {
-          onReady: (event: any) => {
-            setPlayer(event.target);
-          },
-          onStateChange: (event: any) => {
-            if (event.data === (window as any).YT.PlayerState.PLAYING) {
-              const interval = setInterval(() => {
-                if (!event.target) return;
-                const current = event.target.getCurrentTime();
-                const duration = event.target.getDuration();
-                if (duration && current / duration >= 0.9 && !videoWatched) {
-                  clearInterval(interval);
-                  markWatchedAutomatically();
-                }
-              }, 1000);
-              return () => clearInterval(interval);
-            }
-          },
-        },
+  // Функция звукового отклика
+  const playUiSound = useCallback((type: "click" | "submit" | "success") => {
+    if (typeof window === "undefined") return;
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.15;
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.connect(gain);
+    switch (type) {
+      case "click":
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.15);
+        break;
+      case "submit":
+        osc.frequency.value = 440;
+        osc.type = "square";
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3);
+        break;
+      case "success":
+        osc.frequency.value = 1046.5;
+        osc.type = "sine";
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+        break;
+    }
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  }, []);
+
+  // Автоматическое сохранение прогресса видео (вызывается из плеера)
+  const markWatchedAutomatically = useCallback(async () => {
+    if (videoWatched) return;
+    window.localStorage.setItem(`lesson-${lesson.id}-video`, "true");
+    setVideoWatched(true);
+    await saveProgress(Math.max(30, lessonData?.progress || 0), false);
+    playUiSound("click");
+  }, [videoWatched, lesson.id, lessonData, playUiSound]);
+
+  // Подсчёт прогресса
+  const reviewedCount = Object.values(wordsReviewed).filter(Boolean).length;
+  const wordsProgress = words.length ? (reviewedCount / words.length) * 100 : 100;
+  const overallProgress = useMemo(() => {
+    const videoPart = videoWatched ? 30 : 0;
+    const wordsPart = words.length ? (reviewedCount / words.length) * 20 : 20;
+    const testPart = result?.passed ? 50 : result ? Math.min(50, result.score_percent * 0.5) : 0;
+    return Math.min(100, Math.round(videoPart + wordsPart + testPart));
+  }, [result, reviewedCount, videoWatched, words.length]);
+
+  // Сохранение прогресса на бэкенд
+  const saveProgress = useCallback(async (nextProgress: number, completed = false) => {
+    setSaving(true);
+    try {
+      const response = await api.post(`/lessons/${lesson.id}/progress/`, {
+        progress: nextProgress,
+        completed,
       });
-    };
-  }, [youtubeId]);
+      setLessonData((prev) => (prev ? { ...prev, progress: response.data.progress } : prev));
+    } catch (requestError) {
+      setError(extractApiErrorMessage(requestError, t.saveError));
+    } finally {
+      setSaving(false);
+    }
+  }, [lesson.id, t.saveError]);
 
-  // Загрузка данных
+  // Автосохранение при изменении прогресса
+  useEffect(() => {
+    if (lessonData && overallProgress > lessonData.progress) {
+      const timer = setTimeout(() => {
+        saveProgress(overallProgress, overallProgress >= 100);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [lessonData, overallProgress, saveProgress]);
+
+  // Загрузка данных урока
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -275,52 +295,47 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
         setLoading(false);
       }
     };
-    void load();
-  }, [lesson.id]);
+    load();
+  }, [lesson.id, t.loadError]);
 
-  const reviewedCount = Object.values(wordsReviewed).filter(Boolean).length;
-  const wordsProgress = words.length ? (reviewedCount / words.length) * 100 : 100;
-  const progress = useMemo(() => {
-    const videoPart = videoWatched ? 30 : 0;
-    const wordsPart = words.length ? (reviewedCount / words.length) * 20 : 20;
-    const testPart = result?.passed ? 50 : result ? Math.min(50, result.score_percent * 0.5) : 0;
-    return Math.min(100, Math.round(videoPart + wordsPart + testPart));
-  }, [result, reviewedCount, videoWatched, words.length]);
-
-  const saveProgress = async (nextProgress: number, completed = false) => {
-    setSaving(true);
-    try {
-      const response = await api.post(`/lessons/${lesson.id}/progress/`, {
-        progress: nextProgress,
-        completed,
-      });
-      setLessonData((prev) => (prev ? { ...prev, progress: response.data.progress } : prev));
-    } catch (requestError) {
-      setError(extractApiErrorMessage(requestError, t.saveError));
-    } finally {
-      setSaving(false);
-    }
-  };
-
+  // Инициализация YouTube плеера с автоотслеживанием
   useEffect(() => {
-    if (lessonData && progress > lessonData.progress) {
-      const timer = window.setTimeout(() => {
-        void saveProgress(progress, progress >= 100);
-      }, 700);
-      return () => window.clearTimeout(timer);
-    }
-  }, [lessonData, progress]);
-
-  const markWatchedAutomatically = async () => {
-    if (videoWatched) return;
-    window.localStorage.setItem(`lesson-${lesson.id}-video`, "true");
-    setVideoWatched(true);
-    await saveProgress(Math.max(30, lessonData?.progress || 0), false);
-  };
+    if (!youtubeId) return;
+    const loadYouTubeAPI = () => {
+      if ((window as any).YT) {
+        initPlayer();
+        return;
+      }
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+      (window as any).onYouTubeIframeAPIReady = initPlayer;
+    };
+    const initPlayer = () => {
+      const newPlayer = new (window as any).YT.Player("youtube-player", {
+        events: {
+          onStateChange: (event: any) => {
+            if (event.data === (window as any).YT.PlayerState.PLAYING) {
+              const interval = setInterval(() => {
+                const current = event.target.getCurrentTime();
+                const duration = event.target.getDuration();
+                if (duration && current / duration >= 0.9 && !videoWatched) {
+                  clearInterval(interval);
+                  markWatchedAutomatically();
+                }
+              }, 1000);
+            }
+          },
+        },
+      });
+      setPlayer(newPlayer);
+    };
+    loadYouTubeAPI();
+  }, [youtubeId, videoWatched, markWatchedAutomatically]);
 
   const handleWordReview = (wordId: number) => {
     playUiSound("click");
-    window.localStorage.setItem(`lesson-${lesson.id}-word-${word.id}`, "true");
+    window.localStorage.setItem(`lesson-${lesson.id}-word-${wordId}`, "true");
     setWordsReviewed((prev) => ({ ...prev, [wordId]: true }));
   };
 
@@ -334,9 +349,9 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     setError("");
     try {
       const response = await api.post<SubmitResult>(`/lessons/${lesson.id}/test/submit/`, {
-        answers: Object.entries(answers).map(([questionId, optionId]) => ({
-          question_id: Number(questionId),
-          option_id: optionId,
+        answers: Object.entries(answers).map(([qId, oId]) => ({
+          question_id: Number(qId),
+          option_id: oId,
         })),
       });
       setResult(response.data);
@@ -351,18 +366,14 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
   const handleAnswer = (questionId: number, optionId: number) => {
     playUiSound("click");
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
-    // Автоматический переход к следующему вопросу через 0.3 сек
     if (currentQuestionIndex + 1 < (testData?.questions.length || 0)) {
-      setTimeout(() => {
-        setCurrentQuestionIndex((i) => i + 1);
-      }, 300);
+      setTimeout(() => setCurrentQuestionIndex((i) => i + 1), 300);
     }
   };
 
-  const scrollTo = useCallback((section: "video" | "vocab" | "test") => {
-    const el = document.getElementById(section);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   if (loading) {
     return (
@@ -375,27 +386,22 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
     );
   }
 
-  const title = lessonData?.title || lesson.title || "Lesson";
-  const description = lessonData?.description || lesson.description || "";
-  const level = lessonData?.level || lesson.level || "A1";
-  const duration = lessonData?.duration_minutes || lesson.duration_minutes || lesson.duration || 0;
-  const youtubeId = lessonData?.youtube_id || lesson.youtube_id || "";
-
   const currentQuestion = testData?.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex + 1 === (testData?.question_count || 0);
+  const allWordsReviewed = words.length > 0 && reviewedCount === words.length;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Button variant="ghost" className="mb-6 gap-2" onClick={() => onNavigate("catalog")}>
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        <ChevronLeft className="h-4 w-4" />
         {t.back}
       </Button>
 
-      {error ? (
+      {error && (
         <Card className="mb-5 border-destructive/20 bg-destructive/10 text-destructive" role="alert">
           {error}
         </Card>
-      ) : null}
+      )}
 
       {/* Степпер */}
       <div className="mb-6 flex justify-between gap-2 border-b border-border pb-2">
@@ -404,7 +410,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
             key={tab}
             onClick={() => {
               if (tab === "vocab" && !videoWatched) return;
-              if (tab === "test" && reviewedCount !== words.length) return;
+              if (tab === "test" && !allWordsReviewed) return;
               setActiveTab(tab);
               scrollTo(tab);
             }}
@@ -426,7 +432,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
 
       <div className="grid gap-6 lg:grid-cols-[1.65fr_0.95fr]">
         <div id="video" className="scroll-mt-24">
-          {/* Видео с эмбиент-свечением */}
+          {/* Эмбиент-свечение */}
           <div className="relative mb-5" ref={videoContainerRef}>
             <div className="absolute -inset-10 z-0 bg-gradient-to-tr from-primary/30 via-secondary/20 to-transparent blur-[100px] opacity-60 pointer-events-none" />
             <CardGlow className="relative z-10 p-0 overflow-hidden">
@@ -447,13 +453,11 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
             </CardGlow>
           </div>
 
-          {/* Словарь (интерактивные карточки с tilt-эффектом) */}
+          {/* Словарь */}
           <div id="vocab" className="scroll-mt-24">
             <h2 className="mb-4 text-2xl font-semibold text-foreground">{t.words}</h2>
             {words.length === 0 ? (
-              <div className="rounded-2xl bg-muted/30 p-6 text-center text-muted-foreground">
-                {t.noWords}
-              </div>
+              <div className="rounded-2xl bg-muted/30 p-6 text-center text-muted-foreground">{t.noWords}</div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {words.map((word) => (
@@ -480,17 +484,16 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                         variant={wordsReviewed[word.id] ? "primary" : "ghost"}
                         size="sm"
                         disabled={wordsReviewed[word.id]}
-                        aria-label={word.word}
                         onClick={() => handleWordReview(word.id)}
                       >
-                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        <CheckCircle2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardGlow>
                 ))}
               </div>
             )}
-            {reviewedCount === words.length && words.length > 0 && (
+            {allWordsReviewed && words.length > 0 && (
               <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
                 {t.ready}
               </div>
@@ -501,16 +504,10 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
           <div id="test" className="scroll-mt-24">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-semibold text-foreground">{t.test}</h2>
-              {testData && (
-                <div className="text-sm text-muted-foreground">
-                  {t.passThreshold}: {testData.pass_threshold}%
-                </div>
-              )}
+              {testData && <div className="text-sm text-muted-foreground">{t.passThreshold}: {testData.pass_threshold}%</div>}
             </div>
             {!testData || testData.question_count === 0 ? (
-              <div className="rounded-2xl bg-muted/30 p-6 text-center text-muted-foreground">
-                {t.noTest}
-              </div>
+              <div className="rounded-2xl bg-muted/30 p-6 text-center text-muted-foreground">{t.noTest}</div>
             ) : (
               <>
                 <AnimatePresence mode="wait">
@@ -557,7 +554,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                     ))}
                   </div>
                   {isLastQuestion && (
-                    <Button onClick={() => void submitTest()} disabled={submitting} loading={submitting}>
+                    <Button onClick={submitTest} disabled={submitting} loading={submitting}>
                       {t.submit}
                     </Button>
                   )}
@@ -566,7 +563,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
             )}
           </div>
 
-          {/* Результаты теста */}
+          {/* Результаты теста и кнопка домой */}
           {result && (
             <Card className="mt-5">
               <div
@@ -579,9 +576,9 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
               >
                 <div className="mb-2 flex justify-center">
                   {result.passed ? (
-                    <Trophy className="h-8 w-8 text-secondary" aria-hidden="true" />
+                    <Trophy className="h-8 w-8 text-secondary" />
                   ) : (
-                    <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
+                    <AlertCircle className="h-8 w-8 text-destructive" />
                   )}
                 </div>
                 <h2 className="mb-2 text-2xl font-semibold text-foreground">
@@ -645,7 +642,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
                   </Button>
                 </div>
               )}
-              {progress >= 100 && (
+              {overallProgress >= 100 && (
                 <div className="mt-6 text-center">
                   <Button onClick={() => onNavigate("home")} variant="primary" className="gap-2">
                     <Home className="h-4 w-4" />
@@ -657,7 +654,7 @@ export function VideoLessonPage({ onNavigate, lesson }: VideoLessonPageProps) {
           )}
         </div>
 
-        {/* Сайдбар с прогрессом и быстрыми переходами */}
+        {/* Сайдбар */}
         <aside className="space-y-5">
           <Card className="sticky top-24">
             <div className="space-y-4">
