@@ -1,69 +1,32 @@
 import React from "react";
-import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
+import {
+  Menu,
+  X,
+  Home,
+  BookOpen,
+  GraduationCap,
+  Sparkles,
+  User,
+} from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
-import { cn } from "./ui/utils";
 
-interface MobileNavProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
+/* =========================
+   TOP BAR (APPLE STYLE)
+========================= */
 
-  // NEW: burger control (optional but recommended)
-  isMenuOpen?: boolean;
-  setIsMenuOpen?: (v: boolean) => void;
-}
-
-export const MobileNav: React.FC<MobileNavProps> = ({
-  currentPage,
-  onNavigate,
-  isMenuOpen = false,
-  setIsMenuOpen,
-}) => {
-  const { isAuthenticated, user } = useAuth();
-  const { language } = useAppPreferences();
-
+export function TopNavbar({
+  isOpen,
+  setIsOpen,
+}: {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+}) {
   const [hidden, setHidden] = React.useState(false);
+
   const lastY = React.useRef(0);
   const ticking = React.useRef(false);
-
-  const copy =
-    language === "ru"
-      ? {
-          home: "Главная",
-          lessons: "Уроки",
-          words: "Слова",
-          studio: "Студия",
-          profile: "Профиль",
-          login: "Вход",
-          navigation: "Навигация",
-        }
-      : {
-          home: "Басты бет",
-          lessons: "Сабақтар",
-          words: "Сөздер",
-          studio: "Студия",
-          profile: "Профиль",
-          login: "Кіру",
-          navigation: "Navigation",
-        };
-
-  const navItems = [
-    { icon: Home, label: copy.home, page: "home" },
-    ...(isAuthenticated
-      ? [
-          { icon: BookOpen, label: copy.lessons, page: "catalog" },
-          { icon: GraduationCap, label: copy.words, page: "vocabulary" },
-          ...(user?.is_content_manager
-            ? [{ icon: Sparkles, label: copy.studio, page: "studio" }]
-            : [{ icon: User, label: copy.profile, page: "dashboard" }]),
-        ]
-      : [{ icon: User, label: copy.login, page: "login" }]),
-  ];
-
-  /* =========================
-     APPLE SCROLL BEHAVIOR
-  ========================= */
 
   React.useEffect(() => {
     const onScroll = () => {
@@ -73,8 +36,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         requestAnimationFrame(() => {
           const diff = y - lastY.current;
 
-          if (Math.abs(diff) > 10 && !isMenuOpen) {
-            if (diff > 0 && y > 80) {
+          // ignore micro scroll noise
+          if (Math.abs(diff) > 10) {
+            if (diff > 0 && y > 80 && !isOpen) {
               setHidden(true);
             } else {
               setHidden(false);
@@ -92,58 +56,131 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isMenuOpen]);
-
-  /* =========================
-     LOCK SCROLL WHEN MENU OPEN
-  ========================= */
+  }, [isOpen]);
 
   React.useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? "hidden" : "";
-  }, [isMenuOpen]);
+    document.body.style.overflow = isOpen ? "hidden" : "";
+  }, [isOpen]);
 
-  /* =========================
-     HIDDEN STATE
-  ========================= */
+  return (
+    <header
+      style={{ zIndex: 2147483647 }}
+      className="fixed top-0 inset-x-0 h-14 md:h-16"
+    >
+      {/* glass background */}
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border-b border-white/10" />
 
-  const isHidden = hidden || isMenuOpen;
+      {/* content */}
+      <div
+        className="relative h-full flex items-center justify-between px-4 max-w-6xl mx-auto transition-all duration-300"
+        style={{
+          transform:
+            hidden && !isOpen ? "translateY(-110%)" : "translateY(0)",
+          opacity: hidden && !isOpen ? 0 : 1,
+        }}
+      >
+        <div className="font-semibold text-lg tracking-tight text-white">
+          AppName
+        </div>
+
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 rounded-xl hover:bg-white/10 transition"
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+/* =========================
+   BURGER MENU (FULL NAV INSIDE)
+========================= */
+
+export function BurgerMenu({
+  isOpen,
+  onClose,
+  onNavigate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (page: string) => void;
+}) {
+  const { isAuthenticated, user } = useAuth();
+  const { language } = useAppPreferences();
+
+  const copy =
+    language === "ru"
+      ? {
+          home: "Главная",
+          lessons: "Уроки",
+          words: "Слова",
+          studio: "Студия",
+          profile: "Профиль",
+          login: "Вход",
+        }
+      : {
+          home: "Басты бет",
+          lessons: "Сабақтар",
+          words: "Сөздер",
+          studio: "Студия",
+          profile: "Профиль",
+          login: "Кіру",
+        };
+
+  const navItems = [
+    { icon: Home, label: copy.home, page: "home" },
+    ...(isAuthenticated
+      ? [
+          { icon: BookOpen, label: copy.lessons, page: "catalog" },
+          { icon: GraduationCap, label: copy.words, page: "vocabulary" },
+          ...(user?.is_content_manager
+            ? [{ icon: Sparkles, label: copy.studio, page: "studio" }]
+            : [{ icon: User, label: copy.profile, page: "dashboard" }]),
+        ]
+      : [{ icon: User, label: copy.login, page: "login" }]),
+  ];
+
+  React.useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+  }, [isOpen]);
 
   return (
     <div
-      style={{
-        zIndex: 2147483647,
-      }}
-      className="fixed top-0 inset-x-0 md:hidden"
+      style={{ zIndex: 2147483646 }}
+      className="fixed inset-0"
     >
-      {/* NAV CONTAINER (NO LAYOUT SHIFT) */}
+      {/* BACKDROP */}
       <div
-        className="mx-auto max-w-md px-3 pt-3 transition-all duration-300"
-        style={{
-          opacity: isHidden ? 0 : 1,
-          transform: isHidden ? "translateY(-20px)" : "translateY(0)",
-          pointerEvents: isHidden ? "none" : "auto",
-        }}
+        onClick={onClose}
+        className={`absolute inset-0 bg-black/50 backdrop-blur-xl transition-opacity duration-300 ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      />
+
+      {/* PANEL */}
+      <div
+        className={`absolute top-0 right-0 h-full w-full max-w-sm bg-white/10 backdrop-blur-3xl border-l border-white/10 shadow-2xl transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
       >
-        {/* GLASS NAV BAR */}
-        <div className="grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/10 backdrop-blur-2xl px-2 py-2 shadow-xl">
+        {/* NAV INSIDE */}
+        <div className="pt-20 px-6 flex flex-col gap-3 text-white">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentPage === item.page;
 
             return (
               <button
                 key={item.page}
-                type="button"
-                onClick={() => onNavigate(item.page)}
-                className={cn(
-                  "interactive flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition",
-                  isActive
-                    ? "bg-primary/20 text-primary"
-                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground"
-                )}
+                onClick={() => {
+                  onNavigate(item.page);
+                  onClose();
+                }}
+                className="flex items-center gap-3 text-lg py-3 px-4 rounded-xl hover:bg-white/10 transition"
               >
-                <Icon className="h-5 w-5" />
-                <span className="truncate">{item.label}</span>
+                <Icon className="w-5 h-5" />
+                {item.label}
               </button>
             );
           })}
@@ -151,4 +188,36 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       </div>
     </div>
   );
-};
+}
+
+/* =========================
+   APP LAYOUT (FINAL)
+========================= */
+
+export default function AppNavigationSystem({
+  children,
+  navigate,
+}: {
+  children: React.ReactNode;
+  navigate: (page: string) => void;
+}) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <TopNavbar isOpen={isOpen} setIsOpen={setIsOpen} />
+
+      <BurgerMenu
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        onNavigate={(page) => {
+          navigate(page);
+          setIsOpen(false);
+        }}
+      />
+
+      {/* PAGE */}
+      <main className="pt-16">{children}</main>
+    </div>
+  );
+}
