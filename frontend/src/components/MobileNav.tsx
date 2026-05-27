@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen, GraduationCap, Home, Sparkles, User } from "lucide-react";
+import {
+  BookOpen,
+  GraduationCap,
+  Home,
+  Sparkles,
+  User,
+} from "lucide-react";
+import { createPortal } from "react-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppPreferences } from "../context/AppPreferencesContext";
@@ -62,19 +69,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     setOpen(false);
   };
 
-  // 🔒 LOCK BODY SCROLL when menu open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   // ESC close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -84,50 +78,61 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // 🔥 PORTAL RENDER (SUPERPOSITION LAYER)
   return (
     <>
-      {/* OVERLAY */}
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-        />
-      )}
-
-      {/* DRAWER */}
-      <aside
-        className={cn(
-          "fixed top-0 right-0 z-50 h-full w-72 bg-background border-l border-border/80 shadow-2xl",
-          "transform transition-transform duration-300",
-          open ? "translate-x-0" : "translate-x-full"
-        )}
+      {/* BURGER BUTTON (если у тебя он отдельно — оставь свой) */}
+      <button
+        onClick={() => setOpen(true)}
+        className="p-2 text-foreground"
       >
-        {/* 👇 IMPORTANT: internal scroll container */}
-        <div className="h-full overflow-y-auto overscroll-contain p-3">
-          <div className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.page;
+        <User className="w-6 h-6" />
+      </button>
 
-              return (
-                <button
-                  key={item.page}
-                  onClick={() => handleNavigate(item.page)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </aside>
+      {typeof window !== "undefined" &&
+        createPortal(
+          <>
+            {/* OVERLAY */}
+            {open && (
+              <div
+                onClick={() => setOpen(false)}
+                className="fixed inset-0 z-[999] bg-black/40 backdrop-blur-sm"
+              />
+            )}
+
+            {/* DRAWER */}
+            <aside
+              className={cn(
+                "fixed right-0 top-0 z-[1000] h-screen w-72 bg-background border-l border-border/80 shadow-2xl transition-transform duration-300 will-change-transform",
+                open ? "translate-x-0" : "translate-x-full"
+              )}
+            >
+              <div className="flex flex-col gap-1 p-3 pt-20 overflow-y-auto h-full">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPage === item.page;
+
+                  return (
+                    <button
+                      key={item.page}
+                      onClick={() => handleNavigate(item.page)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+          </>,
+          document.body
+        )}
     </>
   );
 };
