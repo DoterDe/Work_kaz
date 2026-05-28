@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Facebook, Instagram, Mail, Youtube } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -16,6 +16,48 @@ export function Footer({ onNavigate }: FooterProps) {
   const { isAuthenticated, user } = useAuth();
   const { language } = useAppPreferences();
   const prefersReducedMotion = useReducedMotion();
+  const footerRef = useRef<HTMLElement>(null);
+
+  // Жидкий градиент внутри футера (локальный эффект)
+  useEffect(() => {
+    const footer = footerRef.current;
+    if (!footer || prefersReducedMotion) return;
+
+    // Отключаем на устройствах без точного указателя
+    if (window.matchMedia("(hover: none)").matches) return;
+
+    let targetX = 0.5;
+    let targetY = 0.5;
+    let currentX = 0.5;
+    let currentY = 0.5;
+    let rafId: number;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = footer.getBoundingClientRect();
+      // Нормализованные координаты внутри футера (0..1)
+      targetX = (e.clientX - rect.left) / rect.width;
+      targetY = (e.clientY - rect.top) / rect.height;
+    };
+
+    const lerp = (start: number, end: number, factor: number) =>
+      start + (end - start) * factor;
+
+    const update = () => {
+      currentX = lerp(currentX, targetX, 0.07);
+      currentY = lerp(currentY, targetY, 0.07);
+      footer.style.setProperty("--footer-mouse-x", String(currentX));
+      footer.style.setProperty("--footer-mouse-y", String(currentY));
+      rafId = requestAnimationFrame(update);
+    };
+
+    footer.addEventListener("mousemove", handleMouseMove);
+    rafId = requestAnimationFrame(update);
+
+    return () => {
+      footer.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(rafId);
+    };
+  }, [prefersReducedMotion]);
 
   const copy =
     language === "ru"
@@ -83,9 +125,23 @@ export function Footer({ onNavigate }: FooterProps) {
   };
 
   return (
-    <footer className="relative z-content mt-20 border-t border-border/70 bg-card/40">
+    <footer
+      ref={footerRef}
+      className={cn(
+        "relative z-content mt-20 border-t border-white/5",
+        // Стеклянный фон + скругление сверху
+        "glass rounded-t-3xl",
+        // Внутренний анимированный градиент (реагирует на мышь)
+        "before:pointer-events-none before:absolute before:inset-0 before:z-[-1] before:rounded-t-3xl",
+        "before:opacity-40",
+        prefersReducedMotion ? "before:hidden" : "",
+        "dark:before:bg-[radial-gradient(circle_at_calc(var(--footer-mouse-x,0.5)*100%)_calc(var(--footer-mouse-y,0.5)*100%),rgba(59,130,246,0.25)_0%,transparent_65%)]",
+        "before:bg-[radial-gradient(circle_at_calc(var(--footer-mouse-x,0.5)*100%)_calc(var(--footer-mouse-y,0.5)*100%),rgba(28,110,250,0.18)_0%,transparent_65%)]"
+      )}
+    >
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          {/* Бренд */}
           <div>
             <button
               type="button"
@@ -107,6 +163,7 @@ export function Footer({ onNavigate }: FooterProps) {
             </p>
           </div>
 
+          {/* Обучение */}
           <div>
             <h2 className="mb-4 text-sm font-semibold text-foreground">{copy.learn}</h2>
             <ul className="space-y-2 text-sm">
@@ -154,6 +211,7 @@ export function Footer({ onNavigate }: FooterProps) {
             </ul>
           </div>
 
+          {/* Поддержка */}
           <div>
             <h2 className="mb-4 text-sm font-semibold text-foreground">{copy.support}</h2>
             <ul className="space-y-2 text-sm">
@@ -185,6 +243,7 @@ export function Footer({ onNavigate }: FooterProps) {
             </ul>
           </div>
 
+          {/* Социальные сети */}
           <div>
             <h2 className="mb-4 text-sm font-semibold text-foreground">{copy.connect}</h2>
             <div className="flex gap-3" aria-label={copy.social}>
@@ -227,6 +286,7 @@ export function Footer({ onNavigate }: FooterProps) {
           </div>
         </div>
 
+        {/* Копирайт */}
         <div className="mt-8 border-t border-border/70 pt-8 text-center text-sm text-muted-foreground">
           <p>© 2026 Qazaq Video Learn. {copy.rights}</p>
         </div>
