@@ -423,7 +423,7 @@ export function HomePage({ onNavigate, setRedirectAfterLogin }: HomePageProps) {
 
           <CardGlow padding="none" className="overflow-hidden">
             <ImageWithFallback
-              src="https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=1600&q=80"
+              src="https://media.cntraveller.com/photos/637e00eece1c9bd657a981ea/16:9/w_1280,c_limit/NAU(1280x720).jpg"
               alt="Students studying online"
               className="aspect-[4/3] h-full w-full object-cover"
             />
